@@ -1,0 +1,39 @@
+# Ruby exfiltration patterns for safe-install
+version: 1
+language: ruby
+file_extensions:
+  - .rb
+high_risk_files:
+  - Rakefile
+  - extconf.rb
+  - Gemfile
+patterns:
+  - id: rb-command
+    pattern: 'system\(|exec\(|`.*`|%x\['
+    description: 'Command execution'
+    category: execution
+
+  - id: rb-http
+    pattern: 'Net::HTTP|URI\.open|open-uri|Faraday|HTTParty'
+    description: 'HTTP request'
+    category: network
+
+  - id: rb-env
+    pattern: 'ENV\[|ENV\.fetch'
+    description: 'Environment variable access'
+    category: data_access
+
+  - id: rb-file-read
+    pattern: 'File\.read|IO\.read'
+    description: 'File read'
+    category: data_access
+
+  - id: rb-sensitive-path
+    pattern: 'Dir\.home.*\.(ssh|aws|kube)'
+    description: 'Sensitive path access'
+    category: data_access
+
+  - id: rb-socket
+    pattern: 'Socket\.new|TCPSocket\.new'
+    description: 'Socket connection'
+    category: network

@@ -1,0 +1,39 @@
+# Rust exfiltration patterns for safe-install
+version: 1
+language: rust
+file_extensions:
+  - .rs
+high_risk_files:
+  - build.rs
+  - lib.rs
+  - main.rs
+patterns:
+  - id: rs-command
+    pattern: 'std::process::Command'
+    description: 'Command execution'
+    category: execution
+
+  - id: rs-network
+    pattern: 'std::net::(TcpStream|UdpSocket)'
+    description: 'Network connection'
+    category: network
+
+  - id: rs-env
+    pattern: 'std::env::(var|vars|home_dir)'
+    description: 'Environment/home access'
+    category: data_access
+
+  - id: rs-fs-read
+    pattern: 'std::fs::(read|read_to_string)'
+    description: 'File system read'
+    category: data_access
+
+  - id: rs-http-client
+    pattern: 'reqwest::|hyper::|curl::'
+    description: 'HTTP client usage'
+    category: network
+
+  - id: rs-sensitive-path
+    pattern: '\.ssh|\.aws|\.kube|\.gnupg'
+    description: 'Sensitive path reference'
+    category: data_access

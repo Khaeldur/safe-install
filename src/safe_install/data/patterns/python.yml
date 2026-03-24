@@ -1,0 +1,109 @@
+# Python exfiltration patterns for safe-install
+version: 1
+language: python
+file_extensions:
+  - .py
+high_risk_files:
+  - setup.py
+  - setup.cfg
+  - conftest.py
+  - __init__.py
+  - __main__.py
+patterns:
+  - id: py-urllib-request
+    pattern: 'urllib\.request\.(urlopen|Request)'
+    description: 'HTTP request via urllib'
+    severity_boost:
+      - setup.py
+      - __init__.py
+    category: network
+
+  - id: py-requests-http
+    pattern: 'requests\.(get|post|put|patch)'
+    description: 'HTTP request via requests'
+    category: network
+
+  - id: py-http-client
+    pattern: 'http\.client\.HTTP'
+    description: 'HTTP request via http.client'
+    category: network
+
+  - id: py-socket-create
+    pattern: 'socket\.socket\('
+    description: 'Raw socket creation'
+    category: network
+
+  - id: py-socket-connect
+    pattern: 'socket\.connect\('
+    description: 'Socket connection'
+    category: network
+
+  - id: py-subprocess
+    pattern: 'subprocess\.(Popen|call|run|check_output)'
+    description: 'Subprocess execution'
+    category: execution
+
+  - id: py-os-system
+    pattern: 'os\.system\('
+    description: 'OS command execution'
+    category: execution
+
+  - id: py-os-popen
+    pattern: 'os\.popen\('
+    description: 'OS command via popen'
+    category: execution
+
+  - id: py-os-exec
+    pattern: 'os\.exec'
+    description: 'Process replacement'
+    category: execution
+
+  - id: py-base64
+    pattern: 'base64\.(b64decode|b64encode|decodebytes)'
+    description: 'Base64 (obfuscation)'
+    category: obfuscation
+
+  - id: py-exec
+    pattern: 'exec\('
+    description: 'Dynamic code execution'
+    category: execution
+
+  - id: py-eval
+    pattern: 'eval\('
+    description: 'Dynamic code evaluation'
+    category: execution
+
+  - id: py-dynamic-import
+    pattern: '__import__\('
+    description: 'Dynamic import'
+    category: execution
+
+  - id: py-environ
+    pattern: 'os\.environ'
+    description: 'Environment variable access'
+    category: data_access
+
+  - id: py-sensitive-path
+    pattern: 'os\.path\.expanduser.*\.(ssh|aws|kube|gnupg|git)'
+    description: 'Sensitive path access'
+    category: data_access
+
+  - id: py-sensitive-file
+    pattern: 'open\(.*\.(pem|key|crt|ssh|aws|env|credentials|token|secret)'
+    description: 'Sensitive file read'
+    category: data_access
+
+  - id: py-ctypes
+    pattern: 'ctypes\.(CDLL|windll|cdll)'
+    description: 'Native library loading'
+    category: execution
+
+  - id: py-keyring
+    pattern: 'keyring\.(get_password|set_password)'
+    description: 'Keyring access'
+    category: data_access
+
+  - id: py-getpass
+    pattern: 'getpass\.(getuser|getpass)'
+    description: 'Credential collection'
+    category: data_access

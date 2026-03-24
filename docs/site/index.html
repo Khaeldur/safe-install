@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>safe-install &mdash; Supply chain attack defense for every package manager</title>
+  <meta name="description" content="12 defense layers. 6 ecosystems. Zero dependencies. Protect pip, npm, cargo, go, gem, and Docker installs from supply chain attacks.">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1f6e1;</text></svg>">
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <span class="shield">&#x1f6e1;</span> safe-install
+    </a>
+    <ul class="nav-links">
+      <li><a href="#problem">Problem</a></li>
+      <li><a href="#how-it-works">How It Works</a></li>
+      <li><a href="#defense">Defense Layers</a></li>
+      <li><a href="#channels">Distribution</a></li>
+      <li><a href="#install">Install</a></li>
+      <li><a href="#demo">Demo</a></li>
+    </ul>
+    <a href="https://github.com/safe-install/safe-install" class="nav-github" target="_blank" rel="noopener" aria-label="GitHub">
+      <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    </a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="top">
+  <div class="hero-badge">&#x1f6e1; Open Source Security Tool</div>
+  <h1>safe-install</h1>
+  <p class="hero-subtitle">Supply chain attack defense for every package manager</p>
+  <p class="hero-tagline">
+    <span>12</span> defense layers. <span>6</span> ecosystems. Zero dependencies. One tool.
+  </p>
+  <div class="hero-buttons">
+    <a href="#install" class="btn btn-primary">Get Started</a>
+    <a href="https://github.com/safe-install/safe-install" class="btn btn-secondary" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      View on GitHub
+    </a>
+  </div>
+</section>
+
+<!-- PROBLEM -->
+<section class="problem" id="problem">
+  <div class="section-inner">
+    <div class="fade-in">
+      <span class="section-label">The Problem</span>
+      <h2 class="section-title">Every <code style="color:var(--red)">pip install</code> is a trust exercise</h2>
+      <p class="section-desc">A single install command can pull in hundreds of transitive dependencies. Any one of them can execute arbitrary code and steal everything on your machine.</p>
+    </div>
+
+    <div class="problem-grid">
+      <div class="fade-in">
+        <div class="attack-demo">
+          <div class="attack-demo-header">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+          <div class="attack-demo-body">
+            <div class="attack-line"><span class="prompt">$ </span><span class="cmd">pip install litellm</span></div>
+            <div class="attack-result">&#x2716; Collecting ~/.ssh/id_rsa</div>
+            <div class="attack-result">&#x2716; Collecting ~/.aws/credentials</div>
+            <div class="attack-result">&#x2716; Collecting ~/.config/gcloud/</div>
+            <div class="attack-result">&#x2716; Collecting ~/.bitcoin/wallet.dat</div>
+            <div class="attack-result">&#x2716; Exfiltrating to attacker C2 server...</div>
+            <br>
+            <div class="attack-line"><span class="prompt">$ </span><span class="cmd">npm install event-stream</span></div>
+            <div class="attack-result">&#x2716; Backdoor targeting Copay Bitcoin wallet</div>
+            <br>
+            <div class="attack-line"><span class="prompt">$ </span><span class="cmd">pip install reqeusts</span></div>
+            <div class="attack-result">&#x2716; Typosquat &mdash; you meant "requests"</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fade-in">
+        <div class="problem-stats">
+          <div class="stat-card">
+            <div class="stat-number">97M</div>
+            <div class="stat-label">downloads/month for litellm when attack was live</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">~1hr</div>
+            <div class="stat-label">attack window before detection</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">7M</div>
+            <div class="stat-label">weekly downloads for ua-parser-js (cryptominer)</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">6</div>
+            <div class="stat-label">ecosystems with identical attack patterns</div>
+          </div>
+        </div>
+
+        <div class="contagion-note">
+          <strong>The contagion spreads through dependency trees.</strong>
+          A compromised PyPI/npm token lets attackers publish malicious versions of packages you maintain &mdash; infecting all your downstream users.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works">
+  <div class="section-inner">
+    <div class="fade-in">
+      <span class="section-label">How It Works</span>
+      <h2 class="section-title">Three steps to safe installs</h2>
+      <p class="section-desc">safe-install wraps your package manager with defense-in-depth protection. No config files, no setup, no dependencies.</p>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card fade-in">
+        <div class="step-number">1</div>
+        <h3>Audit</h3>
+        <p>Resolve the full dependency tree. Check every package against typosquat detection, threat intelligence feeds, and source code analysis for exfiltration patterns.</p>
+      </div>
+      <div class="step-card fade-in">
+        <div class="step-number">2</div>
+        <h3>Protect</h3>
+        <p>Move credentials to a temporary vault. Spin up a Docker sandbox with zero host access. Install packages in complete isolation &mdash; no filesystem, no network, no credentials.</p>
+      </div>
+      <div class="step-card fade-in">
+        <div class="step-number">3</div>
+        <h3>Monitor</h3>
+        <p>Take filesystem snapshots before and after. Watch for unexpected network connections, DNS queries, and file changes. Generate a full audit report.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DEFENSE LAYERS -->
+<section class="defense" id="defense">
+  <div class="section-inner">
+    <div class="fade-in">
+      <span class="section-label">Defense in Depth</span>
+      <h2 class="section-title">12 independent defense layers</h2>
+      <p class="section-desc">Each layer works independently. If one fails, others still protect you. Use Layer 1 (Docker). Everything else is a fallback.</p>
+    </div>
+
+    <!-- Install-time -->
+    <div class="defense-group fade-in">
+      <div class="defense-group-title">Install-time Defenses</div>
+      <div class="defense-grid">
+        <div class="defense-card">
+          <span class="defense-icon">&#x1f4e6;</span>
+          <h4>Docker Sandbox</h4>
+          <p>Complete OS-level isolation. Package code runs in a locked-down container with zero access to host filesystem, credentials, or network.</p>
+          <span class="defense-strength strength-flawless">Flawless</span>
+        </div>
+        <div class="defense-card">
+          <span class="defense-icon">&#x2699;</span>
+          <h4>Binary-Only Mode</h4>
+          <p>Refuses source distributions entirely. Wheels and prebuilt packages skip code execution during install.</p>
+          <span class="defense-strength strength-flawless">Flawless (install)</span>
+        </div>
+        <div class="defense-card">
+          <span class="defense-icon">&#x1f512;</span>
+          <h4>Hash Lockfile</h4>
+          <p>SHA256 verification of every package. Detects any tampering, supply chain swaps, or dependency confusion attacks.</p>
+          <span class="defense-strength strength-flawless">Flawless (tamper)</span>
+        </div>
+        <div class="defense-card">
+          <span class="defense-icon">&#x1f5c4;</span>
+          <h4>Credential Vault</h4>
+          <p>Moves SSH keys, cloud creds, API tokens, and browser data to a temporary vault. Clears env vars during install.</p>
+          <span class="defense-strength strength-strong">~95%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analysis -->
+    <div class="defense-group fade-in">
+      <div class="defense-group-title">Analysis Defenses</div>
+      <div class="defense-grid">
+        <div class="defense-card">
+          <span class="defense-icon">&#x1f50d;</span>
+          <h4>Typosquat Detection</h4>
+          <p>Levenshtein distance, keyboard proximity, and phonetic matching against top packages. Catches "reqeusts", "lodsah", "colourama".</p>
+          <span class="defense-strength strength-strong">~90%</span>
+        </div>
+        <div class="defense-card">
+          <span class="defense-icon">&#x1f4e1;</span>
+          <h4>Threat Intelligence</h4>
+          <p>Cross-references packages against known-malicious registries, OSV advisories, and community blocklists.</p>
+          <span class="defense-strength strength-strong">~85%</span>
+        </div>
+        <div class="defense-card">
+          <span class="defense-icon">&#x1f4c4;</span>
+          <h4>Source Code Scan</h4>
+          <p>Inspects setup.py, postinstall.js, build.rs for exfiltration patterns: file reads, network calls, env access, obfuscation.</p>
+          <span class="defense-strength strength-good">~70%</span>
+        </div>
+        <div class="defense-card">
+          <span class="defense-icon">&#x1f9ec;</span>
+          <h4>Binary Analysis</h4>
+          <p>Detects suspicious compiled artifacts, embedded scripts, and obfuscated payloads in distributed packages.</p>
+          <span class="defense-strength strength-good">~65%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Runtime -->
+    <div class="defense-group fade-in">
+      <div class="defense-group-title">Runtime Defenses</div>
+      <div class="defense-grid">
+        <div class="defense-card">
+          <span class="defense-icon">&#x1f4f8;</span>
+          <h4>Filesystem Snapshot</h4>
+          <p>Takes before/after snapshots to detect unexpected file modifications, new files, or changes to sensitive paths.</p>
+          <span class="defense-strength strength-strong">~90%</span>
+        </div>
+        <div class="defense-card">
+          <span class="defense-icon">&#x1f6e1;</span>
+          <h4>Vault Hardening</h4>
+          <p>Monitors vault integrity during install. Detects any attempts to access, copy, or exfiltrate protected credentials.</p>
+          <span class="defense-strength strength-strong">~95%</span>
+        </div>
+        <div class="defense-card">
+          <span class="defense-icon">&#x1f310;</span>
+          <h4>DNS Defense</h4>
+          <p>Monitors DNS queries during install. Flags unexpected domains, data exfiltration via DNS tunneling, and C2 beacons.</p>
+          <span class="defense-strength strength-good">~70%</span>
+        </div>
+        <div class="defense-card">
+          <span class="defense-icon">&#x1f4e1;</span>
+          <h4>Network Monitor</h4>
+          <p>Detects unexpected outbound connections, data exfiltration attempts, and communication with known malicious IPs.</p>
+          <span class="defense-strength strength-good">~60%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DISTRIBUTION CHANNELS -->
+<section id="channels">
+  <div class="section-inner">
+    <div class="fade-in">
+      <span class="section-label">Distribution</span>
+      <h2 class="section-title">Protection everywhere you work</h2>
+      <p class="section-desc">Five distribution channels that work together. Use the CLI directly, integrate into your editor, or automate in CI/CD.</p>
+    </div>
+
+    <div class="dist-grid fade-in">
+      <div class="dist-card">
+        <span class="dist-icon">&#x2328;</span>
+        <h4>CLI</h4>
+        <p>Drop-in replacement for pip/npm/cargo install. Zero config, zero dependencies.</p>
+      </div>
+      <div class="dist-card">
+        <span class="dist-icon">&#x1f4bb;</span>
+        <h4>VS Code Extension</h4>
+        <p>Real-time scanning in your editor. Inline warnings when you add risky dependencies.</p>
+      </div>
+      <div class="dist-card">
+        <span class="dist-icon">&#x2699;</span>
+        <h4>GitHub Action</h4>
+        <p>Audit every dependency change in PRs. Block merges that introduce threats.</p>
+      </div>
+      <div class="dist-card">
+        <span class="dist-icon">&#x1f514;</span>
+        <h4>Tray App</h4>
+        <p>System-wide protection. Intercepts package installs across all terminals automatically.</p>
+      </div>
+      <div class="dist-card">
+        <span class="dist-icon">&#x1f433;</span>
+        <h4>Docker Extension</h4>
+        <p>Integrated into Docker Desktop. Scan images and audit packages in containers.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<section class="install" id="install">
+  <div class="section-inner">
+    <div class="fade-in">
+      <span class="section-label">Install</span>
+      <h2 class="section-title">Get protected in 30 seconds</h2>
+      <p class="section-desc">Zero dependencies. Single file. Works on Linux, macOS, and Windows.</p>
+    </div>
+
+    <div class="fade-in" style="max-width:700px;">
+      <div class="install-tabs">
+        <button class="install-tab active" data-tab="pip">pip</button>
+        <button class="install-tab" data-tab="curl">curl</button>
+        <button class="install-tab" data-tab="manual">manual</button>
+      </div>
+      <div class="install-panels">
+        <div class="install-panel active" id="tab-pip">
+          <div class="code-block">
+            <button class="copy-btn" data-copy="pip install safe-install">Copy</button>
+            <code><span class="comment"># Install from PyPI</span>
+<span class="cmd">pip install safe-install</span>
+
+<span class="comment"># Verify it works</span>
+<span class="cmd">safe-install --version</span>
+
+<span class="comment"># Check what's exposed on your machine right now</span>
+<span class="cmd">safe-install check-env</span></code>
+          </div>
+        </div>
+        <div class="install-panel" id="tab-curl">
+          <div class="code-block">
+            <button class="copy-btn" data-copy="curl -O https://raw.githubusercontent.com/safe-install/safe-install/main/src/safe_install/cli.py && python cli.py --version">Copy</button>
+            <code><span class="comment"># Download the single file (zero deps)</span>
+<span class="cmd">curl -O https://raw.githubusercontent.com/safe-install/safe-install/main/src/safe_install/cli.py</span>
+
+<span class="comment"># Run directly</span>
+<span class="cmd">python cli.py --version</span>
+
+<span class="comment"># Or move to your PATH</span>
+<span class="cmd">chmod +x cli.py && mv cli.py /usr/local/bin/safe-install</span></code>
+          </div>
+        </div>
+        <div class="install-panel" id="tab-manual">
+          <div class="code-block">
+            <button class="copy-btn" data-copy="git clone https://github.com/safe-install/safe-install.git && cd safe-install && pip install -e .">Copy</button>
+            <code><span class="comment"># Clone and install in development mode</span>
+<span class="cmd">git clone https://github.com/safe-install/safe-install.git</span>
+<span class="cmd">cd safe-install</span>
+<span class="cmd">pip install -e .</span>
+
+<span class="comment"># Or just run the CLI directly</span>
+<span class="cmd">python src/safe_install/cli.py --version</span></code>
+          </div>
+        </div>
+      </div>
+      <p class="install-time">Takes less than 30 seconds. Uses only Python stdlib.</p>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO -->
+<section id="demo">
+  <div class="section-inner">
+    <div class="fade-in">
+      <span class="section-label">See It In Action</span>
+      <h2 class="section-title">Watch safe-install catch threats</h2>
+      <p class="section-desc">Real output from real commands. No staged demos.</p>
+    </div>
+
+    <div class="demo-terminal fade-in" id="demo-terminal">
+      <div class="demo-terminal-header">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="demo-terminal-title">safe-install</span>
+      </div>
+      <div class="demo-terminal-body" id="demo-body">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-links">
+      <a href="https://github.com/safe-install/safe-install" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/safe-install/safe-install/blob/main/README.md" target="_blank" rel="noopener">Documentation</a>
+      <a href="https://github.com/safe-install/safe-install/issues" target="_blank" rel="noopener">Report Issue</a>
+      <a href="https://github.com/safe-install/safe-install/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+    </div>
+    <p class="footer-note">
+      Made with <span class="heart">&#x2764;</span> to protect developers &mdash; <strong>safe-install</strong> is free and open source
+    </p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

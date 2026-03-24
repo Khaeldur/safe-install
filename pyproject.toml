@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "safe-install"
+version = "0.1.0"
+description = "Supply chain attack defense for pip, npm, cargo, go, gem, and Docker"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+authors = [{ name = "safe-install contributors" }]
+keywords = [
+    "security",
+    "supply-chain",
+    "pip",
+    "npm",
+    "cargo",
+    "go",
+    "gem",
+    "docker",
+    "sandbox",
+    "defense",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Security",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: System :: Installation/Setup",
+    "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+tray = ["pystray", "Pillow"]
+
+[project.scripts]
+safe-install = "safe_install.cli:main"
+safe-pip = "safe_install.cli:main_pip"
+safe-npm = "safe_install.cli:main_npm"
+safe-install-intercept = "safe_install.wrapper.intercept:main"
+
+[project.urls]
+Homepage = "https://github.com/safe-install/safe-install"
+Repository = "https://github.com/safe-install/safe-install"
+Issues = "https://github.com/safe-install/safe-install/issues"
+Documentation = "https://github.com/safe-install/safe-install#readme"
+Changelog = "https://github.com/safe-install/safe-install/releases"
+
+[tool.setuptools.packages.find]
+where = ["src"]

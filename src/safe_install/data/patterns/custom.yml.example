@@ -1,0 +1,28 @@
+# Custom exfiltration patterns for safe-install
+#
+# Place your custom patterns in any .yml file under:
+#   ~/.config/safe-install/patterns/
+#
+# Or configure additional directories in config.toml:
+#   [patterns]
+#   custom_dirs = ["/path/to/my/patterns"]
+#
+# Each file must follow this format. The language field determines
+# which file types the patterns apply to. You can extend any built-in
+# language or define patterns for a new one.
+
+version: 1
+language: python
+patterns:
+  - id: custom-my-internal-api
+    pattern: 'internal\.company\.api'
+    description: 'Internal API reference in package code'
+    category: suspicious
+
+  - id: custom-telemetry-endpoint
+    pattern: 'telemetry\.example\.com'
+    description: 'Known telemetry endpoint'
+    category: network
+    severity_boost:
+      - setup.py
+      - __init__.py

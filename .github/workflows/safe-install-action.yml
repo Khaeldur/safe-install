@@ -1,0 +1,24 @@
+name: 'Safe Install'
+description: 'Supply chain attack defense for package installation'
+inputs:
+  requirements:
+    description: 'Requirements file path'
+    default: 'requirements.txt'
+  ecosystem:
+    description: 'Package ecosystem'
+    default: 'pip'
+  fail-on-critical:
+    description: 'Fail if critical findings'
+    default: 'true'
+runs:
+  using: 'composite'
+  steps:
+    - run: pip install safe-install
+      shell: bash
+    - run: safe-install install -r ${{ inputs.requirements }} -e ${{ inputs.ecosystem }} --ci --report-dir ./safe-install-reports
+      shell: bash
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: safe-install-reports
+        path: ./safe-install-reports/

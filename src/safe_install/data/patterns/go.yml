@@ -1,0 +1,32 @@
+# Go exfiltration patterns for safe-install
+version: 1
+language: go
+file_extensions:
+  - .go
+high_risk_files:
+  - main.go
+patterns:
+  - id: go-exec
+    pattern: 'os/exec|exec\.Command'
+    description: 'Command execution'
+    category: execution
+
+  - id: go-network
+    pattern: 'net\.Dial|net\.Listen|http\.Get|http\.Post'
+    description: 'Network connection'
+    category: network
+
+  - id: go-env
+    pattern: 'os\.Getenv|os\.Environ'
+    description: 'Environment access'
+    category: data_access
+
+  - id: go-file-read
+    pattern: 'os\.ReadFile|ioutil\.ReadFile'
+    description: 'File read'
+    category: data_access
+
+  - id: go-sensitive-path
+    pattern: 'os\.UserHomeDir.*\.(ssh|aws|kube)'
+    description: 'Sensitive path access'
+    category: data_access

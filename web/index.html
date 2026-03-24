@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>safe-install Dashboard</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #e6edf3; --dim: #8b949e; --green: #3fb950;
+    --red: #f85149; --yellow: #d29922; --blue: #58a6ff;
+    --cyan: #39d353; --purple: #bc8cff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+         background: var(--bg); color: var(--text); min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1a1e2e 0%, #0d1117 100%);
+             border-bottom: 1px solid var(--border); padding: 24px 32px; }
+  .header h1 { font-size: 24px; font-weight: 600; }
+  .header h1 span { color: var(--cyan); }
+  .header p { color: var(--dim); margin-top: 4px; font-size: 14px; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px 32px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .stat .label { color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .stat .value.green { color: var(--green); }
+  .stat .value.red { color: var(--red); }
+  .stat .value.yellow { color: var(--yellow); }
+  .stat .value.blue { color: var(--blue); }
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+  .panel-header { padding: 16px 20px; border-bottom: 1px solid var(--border);
+                   font-weight: 600; font-size: 15px; }
+  .panel-body { padding: 16px 20px; }
+  .full-width { grid-column: 1 / -1; }
+  .demo-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .demo-btn { background: var(--border); color: var(--text); border: 1px solid #444;
+              border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px;
+              font-family: inherit; transition: all 0.15s; }
+  .demo-btn:hover { background: #2d333b; border-color: var(--blue); }
+  .demo-btn.active { background: #1f6feb33; border-color: var(--blue); color: var(--blue); }
+  .input-row { display: flex; gap: 8px; margin-bottom: 16px; }
+  .input-row input { flex: 1; background: var(--bg); border: 1px solid var(--border);
+                     color: var(--text); border-radius: 6px; padding: 10px 14px; font-size: 14px;
+                     font-family: 'SF Mono', 'Fira Code', monospace; }
+  .input-row input:focus { outline: none; border-color: var(--blue); }
+  .input-row button { background: var(--green); color: #000; border: none; border-radius: 6px;
+                      padding: 10px 20px; font-weight: 600; cursor: pointer; font-size: 14px; }
+  .input-row button:hover { opacity: 0.9; }
+  .input-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .output { background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+            padding: 16px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px;
+            line-height: 1.6; white-space: pre-wrap; overflow-x: auto; min-height: 200px;
+            max-height: 600px; overflow-y: auto; color: var(--dim); }
+  .output.active { color: var(--text); }
+  .layers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .layer { display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+           background: var(--bg); border-radius: 6px; font-size: 13px; }
+  .layer .num { background: var(--green); color: #000; border-radius: 4px;
+                width: 24px; height: 24px; display: flex; align-items: center;
+                justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .eco-list { display: flex; gap: 6px; flex-wrap: wrap; }
+  .eco { padding: 4px 10px; background: var(--bg); border: 1px solid var(--border);
+         border-radius: 4px; font-size: 12px; }
+  .attacks li { margin-bottom: 4px; }
+  .attacks strong { color: var(--yellow); }
+  @media (max-width: 768px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .panels { grid-template-columns: 1fr; }
+    .layers { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1><span>safe-install</span> &mdash; Supply Chain Attack Defense</h1>
+  <p>12 defense layers &middot; 6 ecosystems &middot; zero dependencies &middot; one tool</p>
+</div>
+<div class="container">
+  <div class="stats">
+    <div class="stat"><div class="label">Defense Layers</div><div class="value green">12</div></div>
+    <div class="stat"><div class="label">Ecosystems</div><div class="value blue">6</div></div>
+    <div class="stat"><div class="label">Sensitive Paths Guarded</div><div class="value yellow" id="stat-paths">--</div></div>
+    <div class="stat"><div class="label">Env Vars Protected</div><div class="value red" id="stat-vars">--</div></div>
+  </div>
+  <div class="panels">
+    <div class="panel full-width">
+      <div class="panel-header">Live Demo</div>
+      <div class="panel-body">
+        <div class="demo-buttons">
+          <button class="demo-btn" onclick="runDemo(this, 'check-env')">Check Exposure</button>
+          <button class="demo-btn" onclick="runDemo(this, 'audit reqeusts')">Typosquat: reqeusts</button>
+          <button class="demo-btn" onclick="runDemo(this, 'audit flask')">Audit: flask</button>
+          <button class="demo-btn" onclick="runDemo(this, 'audit colorama --deep')">Deep Audit: colorama</button>
+          <button class="demo-btn" onclick="runDemo(this, 'audit litellm')">Audit: litellm</button>
+          <button class="demo-btn" onclick="runDemo(this, 'verify')">Self-Verify</button>
+          <button class="demo-btn" onclick="runDemo(this, 'install httpx --no-sandbox --dry-run')">Install: httpx (dry)</button>
+        </div>
+        <div class="input-row">
+          <input id="cmd" type="text" placeholder="safe-install audit &lt;package&gt;" value="audit requests --deep"
+                 onkeydown="if(event.key==='Enter')runCustom()">
+          <button id="runBtn" onclick="runCustom()">Run</button>
+        </div>
+        <div class="output" id="output">Click a demo button or type a command above to see safe-install in action.
+
+Try these:
+  audit flask                    -- scan Flask + all dependencies
+  audit reqeusts                 -- typosquat detection in action
+  audit colorama --deep          -- full intelligence + binary analysis
+  install httpx --no-sandbox --dry-run  -- see the 8-step install flow
+  check-env                      -- see what's exposed on this machine</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">12 Defense Layers</div>
+      <div class="panel-body">
+        <div class="layers">
+          <div class="layer"><div class="num">1</div> Docker Sandbox</div>
+          <div class="layer"><div class="num">2</div> Binary-Only Mode</div>
+          <div class="layer"><div class="num">3</div> Hash Lockfile</div>
+          <div class="layer"><div class="num">4</div> Typosquat Detect</div>
+          <div class="layer"><div class="num">5</div> Package Intel</div>
+          <div class="layer"><div class="num">6</div> Source Inspection</div>
+          <div class="layer"><div class="num">7</div> Filesystem Snapshot</div>
+          <div class="layer"><div class="num">8</div> Vault Hardening</div>
+          <div class="layer"><div class="num">9</div> DNS Defense</div>
+          <div class="layer"><div class="num">10</div> Import Guard</div>
+          <div class="layer"><div class="num">11</div> Runtime Monitor</div>
+          <div class="layer"><div class="num">12</div> Network Monitor</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">Ecosystems &amp; Threat History</div>
+      <div class="panel-body">
+        <div class="eco-list" style="margin-bottom: 16px;">
+          <div class="eco">pip (Python)</div>
+          <div class="eco">npm (Node.js)</div>
+          <div class="eco">cargo (Rust)</div>
+          <div class="eco">go (Go)</div>
+          <div class="eco">gem (Ruby)</div>
+          <div class="eco">docker (Images)</div>
+        </div>
+        <ul class="attacks" style="color: var(--dim); font-size: 12px; line-height: 1.8; padding-left: 16px;">
+          <li><strong>litellm 1.82.8</strong> (2025) &mdash; SSH keys, cloud creds, crypto wallets</li>
+          <li><strong>ultralytics</strong> (2024) &mdash; Cryptominer via GitHub Actions</li>
+          <li><strong>@solana/web3.js</strong> (2024) &mdash; Credential stealer in Solana SDK</li>
+          <li><strong>ua-parser-js</strong> (2021) &mdash; 7M downloads/week, password stealer</li>
+          <li><strong>event-stream</strong> (2018) &mdash; Bitcoin wallet backdoor</li>
+          <li><strong>rustdecimal</strong> (2022) &mdash; Typosquat, stole env vars via build.rs</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+async function runCmd(args) {
+  const resp = await fetch('/api/run?args=' + encodeURIComponent(args));
+  return await resp.text();
+}
+async function runDemo(btn, cmd) {
+  document.querySelectorAll('.demo-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const out = document.getElementById('output');
+  const runBtn = document.getElementById('runBtn');
+  runBtn.disabled = true;
+  out.className = 'output';
+  out.textContent = 'Running: safe-install ' + cmd + '\n\n...';
+  const result = await runCmd(cmd);
+  out.className = 'output active';
+  out.textContent = '$ safe-install ' + cmd + '\n\n' + result;
+  highlightOutput(out);
+  runBtn.disabled = false;
+}
+async function runCustom() {
+  const cmd = document.getElementById('cmd').value.trim();
+  if (!cmd) return;
+  const out = document.getElementById('output');
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  out.className = 'output';
+  out.textContent = 'Running: safe-install ' + cmd + '\n\n...';
+  const result = await runCmd(cmd);
+  out.className = 'output active';
+  out.textContent = '$ safe-install ' + cmd + '\n\n' + result;
+  highlightOutput(out);
+  btn.disabled = false;
+}
+function highlightOutput(el) {
+  let h = el.textContent;
+  h = h.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  h = h.replace(/CRITICAL/g, '<span style="color:#f85149;font-weight:700">CRITICAL</span>');
+  h = h.replace(/\[HIGH\]/g, '<span style="color:#d29922;font-weight:700">[HIGH]</span>');
+  h = h.replace(/\[MEDIUM\]/g, '<span style="color:#58a6ff">[MEDIUM]</span>');
+  h = h.replace(/\[WARN\]/g, '<span style="color:#d29922">[WARN]</span>');
+  h = h.replace(/EXPOSED/g, '<span style="color:#f85149;font-weight:700">EXPOSED</span>');
+  h = h.replace(/PASS/g, '<span style="color:#3fb950;font-weight:700">PASS</span>');
+  h = h.replace(/\bOK\b/g, '<span style="color:#3fb950">OK</span>');
+  h = h.replace(/TYPOSQUAT/g, '<span style="color:#d29922;font-weight:700">TYPOSQUAT</span>');
+  h = h.replace(/\[DRY RUN\]/g, '<span style="color:#d29922">[DRY RUN]</span>');
+  h = h.replace(/(\[\d+\/\d+\])/g, '<span style="color:#58a6ff;font-weight:600">$1</span>');
+  h = h.replace(/(--\s.*?$)/gm, '<span style="color:#8b949e">$1</span>');
+  el.innerHTML = h;
+}
+(async () => {
+  const result = await runCmd('check-env');
+  const pm = result.match(/(\d+) files/);
+  const vm = result.match(/(\d+) env vars/);
+  document.getElementById('stat-paths').textContent = pm ? pm[1] : '0';
+  document.getElementById('stat-vars').textContent = vm ? vm[1] : '0';
+})();
+</script>
+</body>
+</html>

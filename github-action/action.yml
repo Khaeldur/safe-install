@@ -1,0 +1,122 @@
+name: "Safe Install - Dependency Scanner"
+description: "Scan dependency changes for supply chain attacks"
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  ecosystem:
+    description: "Package ecosystem to scan (pip, npm, cargo, go, gem, auto)"
+    required: false
+    default: "auto"
+  fail-on:
+    description: "Minimum severity to fail the check (critical, high, medium, low)"
+    required: false
+    default: "critical"
+  comment-on-pr:
+    description: "Post scan results as a PR comment"
+    required: false
+    default: "true"
+  report-formats:
+    description: "Comma-separated output formats (json, sarif)"
+    required: false
+    default: "json,sarif"
+  safe-install-version:
+    description: "Version of safe-install to use"
+    required: false
+    default: "latest"
+  scan-all-deps:
+    description: "Scan all dependencies, not just changed ones"
+    required: false
+    default: "false"
+
+outputs:
+  severity:
+    description: "Highest severity found across all scanned files"
+    value: ${{ steps.scan.outputs.severity }}
+  findings-count:
+    description: "Total number of findings"
+    value: ${{ steps.scan.outputs.findings_count }}
+  report-path:
+    description: "Path to JSON report"
+    value: ${{ steps.scan.outputs.report_path }}
+  sarif-path:
+    description: "Path to SARIF report"
+    value: ${{ steps.scan.outputs.sarif_path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install safe-install
+      shell: bash
+      run: |
+        if [ "${{ inputs.safe-install-version }}" = "latest" ]; then
+          pip install safe-install
+        else
+          pip install "safe-install==${{ inputs.safe-install-version }}"
+        fi
+
+    - name: Detect dependency changes
+      id: diff
+      shell: bash
+      env:
+        SCAN_ALL: ${{ inputs.scan-all-deps }}
+        ECOSYSTEM: ${{ inputs.ecosystem }}
+      run: |
+        chmod +x "${{ github.action_path }}/scripts/diff-deps.sh"
+        "${{ github.action_path }}/scripts/diff-deps.sh"
+
+    - name: Scan dependencies
+      id: scan
+      shell: bash
+      env:
+        ECOSYSTEM: ${{ inputs.ecosystem }}
+        REPORT_FORMATS: ${{ inputs.report-formats }}
+      run: |
+        chmod +x "${{ github.action_path }}/scripts/scan-deps.sh"
+        "${{ github.action_path }}/scripts/scan-deps.sh"
+
+    - name: Comment on PR
+      if: inputs.comment-on-pr == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: |
+        chmod +x "${{ github.action_path }}/scripts/format-comment.sh"
+        "${{ github.action_path }}/scripts/format-comment.sh"
+
+    - name: Upload SARIF
+      if: always() && hashFiles('safe-install-reports/*.sarif') != ''
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: safe-install-reports/
+
+    - name: Upload artifacts
+      if: always() && hashFiles('safe-install-reports/*') != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: safe-install-reports
+        path: safe-install-reports/
+
+    - name: Check pass/fail
+      shell: bash
+      env:
+        FAIL_ON: ${{ inputs.fail-on }}
+      run: |
+        severity="${{ steps.scan.outputs.severity }}"
+        fail_on="${FAIL_ON}"
+
+        declare -A levels=( [critical]=4 [high]=3 [medium]=2 [low]=1 [clean]=0 )
+        sev_lower=$(echo "$severity" | tr '[:upper:]' '[:lower:]')
+        fail_lower=$(echo "$fail_on" | tr '[:upper:]' '[:lower:]')
+
+        sev_level=${levels[$sev_lower]:-0}
+        fail_level=${levels[$fail_lower]:-4}
+
+        if [ "$sev_level" -ge "$fail_level" ]; then
+          echo "::error::safe-install found $severity severity issues (threshold: $fail_on)"
+          exit 1
+        fi
+
+        echo "Scan passed: severity=$severity, threshold=$fail_on"

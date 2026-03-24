@@ -1,0 +1,86 @@
+# JavaScript/TypeScript exfiltration patterns for safe-install
+version: 1
+language: javascript
+file_extensions:
+  - .js
+  - .mjs
+  - .cjs
+  - .ts
+high_risk_files:
+  - package.json
+  - preinstall.js
+  - postinstall.js
+  - install.js
+  - preinstall.sh
+  - postinstall.sh
+  - index.js
+patterns:
+  - id: js-child-process
+    pattern: 'require\(["\x27]child_process["\x27]\)'
+    description: 'Child process import'
+    category: execution
+
+  - id: js-exec
+    pattern: 'exec\(|execSync\(|spawn\(|spawnSync\('
+    description: 'Command execution'
+    category: execution
+
+  - id: js-fs-read
+    pattern: 'fs\.readFile|fs\.readFileSync'
+    description: 'File system read'
+    category: data_access
+
+  - id: js-process-env
+    pattern: 'process\.env'
+    description: 'Environment variable access'
+    category: data_access
+
+  - id: js-http-request
+    pattern: 'https?\.request\(|fetch\(|axios\.|got\('
+    description: 'HTTP request'
+    category: network
+
+  - id: js-net-connect
+    pattern: 'net\.createConnection|net\.connect'
+    description: 'Socket connection'
+    category: network
+
+  - id: js-dns
+    pattern: 'dns\.resolve|dns\.lookup'
+    description: 'DNS operation'
+    category: network
+
+  - id: js-base64
+    pattern: 'Buffer\.from\(.*base64'
+    description: 'Base64 (obfuscation)'
+    category: obfuscation
+
+  - id: js-eval
+    pattern: 'eval\(|Function\('
+    description: 'Dynamic code execution'
+    category: execution
+
+  - id: js-os-module
+    pattern: 'require\(["\x27]os["\x27]\)'
+    description: 'OS module import'
+    category: execution
+
+  - id: js-sensitive-path
+    pattern: '\.homedir\(\).*\.(ssh|aws|kube|gnupg)'
+    description: 'Sensitive path access'
+    category: data_access
+
+  - id: js-sensitive-file
+    pattern: 'path\.join\(.*\.(pem|key|env|credentials|token)'
+    description: 'Sensitive file path'
+    category: data_access
+
+  - id: js-crypto
+    pattern: 'crypto\.create'
+    description: 'Crypto operation in install'
+    category: obfuscation
+
+  - id: js-websocket
+    pattern: 'WebSocket\(|ws\('
+    description: 'WebSocket connection'
+    category: network

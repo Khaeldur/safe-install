@@ -1,0 +1,9 @@
+safe-install:
+  stage: test
+  script:
+    - pip install safe-install
+    - safe-install install -r requirements.txt --ci --report-dir ./reports
+  artifacts:
+    paths:
+      - reports/
+    when: always

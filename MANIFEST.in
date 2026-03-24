@@ -1,0 +1,14 @@
+recursive-include src **
+include LICENSE
+include README.md
+include safe-install.example.toml
+
+prune tests
+prune web
+prune tray-app
+prune vscode-extension
+prune docker-extension
+prune github-action
+global-exclude __pycache__
+global-exclude *.pyc
+global-exclude *.pyo

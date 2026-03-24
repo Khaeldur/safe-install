@@ -1,0 +1,24 @@
+{
+  "icon": "shield.svg",
+  "ui": {
+    "dashboard-tab": {
+      "title": "Safe Install",
+      "root": "/ui",
+      "src": "index.html"
+    }
+  },
+  "vm": {},
+  "host": {
+    "binaries": [
+      {
+        "darwin": [{ "path": "/usr/local/bin/docker" }],
+        "linux": [{ "path": "/usr/bin/docker" }],
+        "windows": [{ "path": "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe" }]
+      }
+    ]
+  },
+  "description": "Supply chain security scanner for Docker images and Dockerfiles. Detects typosquatting, malicious layers, and suspicious patterns.",
+  "vendor": "safe-install",
+  "version": "0.1.0",
+  "api-version": "0.3.4"
+}

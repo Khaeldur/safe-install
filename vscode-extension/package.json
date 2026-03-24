@@ -1,0 +1,67 @@
+{
+  "name": "safe-install",
+  "displayName": "Safe Install - Supply Chain Defense",
+  "description": "Protect against supply chain attacks in pip, npm, cargo, go, gem",
+  "version": "0.1.0",
+  "publisher": "safe-install",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Linters"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/requirements*.txt",
+    "workspaceContains:**/package.json",
+    "workspaceContains:**/Cargo.toml",
+    "workspaceContains:**/go.mod",
+    "workspaceContains:**/Gemfile"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Safe Install",
+      "properties": {
+        "safeInstall.cliPath": {
+          "type": "string",
+          "default": "safe-install",
+          "description": "Path to the safe-install CLI binary"
+        },
+        "safeInstall.scanOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically scan dependency files on save"
+        },
+        "safeInstall.showHoverIntelligence": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show package intelligence on hover"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "safeInstall.scanFile",
+        "title": "Safe Install: Scan Current File"
+      },
+      {
+        "command": "safeInstall.auditPackage",
+        "title": "Safe Install: Audit Package"
+      },
+      {
+        "command": "safeInstall.toggleProtection",
+        "title": "Safe Install: Toggle Protection"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  }
+}
