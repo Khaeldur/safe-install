@@ -23,7 +23,7 @@ keywords = [
     "defense",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
@@ -51,11 +51,11 @@ safe-npm = "safe_install.cli:main_npm"
 safe-install-intercept = "safe_install.wrapper.intercept:main"
 
 [project.urls]
-Homepage = "https://github.com/safe-install/safe-install"
-Repository = "https://github.com/safe-install/safe-install"
-Issues = "https://github.com/safe-install/safe-install/issues"
-Documentation = "https://github.com/safe-install/safe-install#readme"
-Changelog = "https://github.com/safe-install/safe-install/releases"
+Homepage = "https://github.com/Khaeldur/safe-install"
+Repository = "https://github.com/Khaeldur/safe-install"
+Issues = "https://github.com/Khaeldur/safe-install/issues"
+Documentation = "https://github.com/Khaeldur/safe-install#readme"
+Changelog = "https://github.com/Khaeldur/safe-install/releases"
 
 [tool.setuptools.packages.find]
 where = ["src"]

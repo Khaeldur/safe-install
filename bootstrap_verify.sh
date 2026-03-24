@@ -1,6 +1,15 @@
 #!/bin/bash
-# Verify safe-install integrity before first use
-# Usage: curl -sSL https://raw.githubusercontent.com/safe-install/safe-install/main/bootstrap_verify.sh | bash
+# Verify safe-install integrity by hashing installed package files.
+#
+# This script computes a SHA256 hash of all .py files in the installed
+# safe_install package. It attempts to compare against a published hash
+# from GitHub releases, but NOTE: release artifacts with SHA256SUMS do
+# not yet exist. Until releases are established, this script only
+# computes and displays the local hash for manual verification.
+#
+# Usage:
+#   curl -sSL https://raw.githubusercontent.com/Khaeldur/safe-install/main/bootstrap_verify.sh | bash
+#   # or: bash bootstrap_verify.sh
 
 set -euo pipefail
 
@@ -10,7 +19,7 @@ YELLOW='\033[93m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
-HASH_URL="https://github.com/safe-install/safe-install/releases/latest/download/SHA256SUMS"
+HASH_URL="https://github.com/Khaeldur/safe-install/releases/latest/download/SHA256SUMS"
 
 info()  { printf "${BOLD}%s${RESET}\n" "$*"; }
 pass()  { printf "${GREEN}${BOLD}PASS${RESET} %s\n" "$*"; }
@@ -59,16 +68,23 @@ if [ -z "$INSTALLED_HASH" ]; then
 fi
 echo "  Installed hash: ${INSTALLED_HASH:0:16}..."
 
-# 3. Download published hash
+# 3. Attempt to download published hash (may not exist yet)
 info "Fetching published hash from GitHub releases..."
 HTTP_CODE=$(curl -sL -w "%{http_code}" -o /tmp/safe-install-sha256sums "$HASH_URL" 2>/dev/null || echo "000")
 
 if [ "$HTTP_CODE" != "200" ]; then
-    warn "could not fetch published hash (HTTP $HTTP_CODE)"
-    warn "no published hash to verify against -- skipping comparison"
+    warn "No published release hash available (HTTP $HTTP_CODE)"
     echo
-    info "Installed hash for manual verification:"
+    warn "Release artifacts with SHA256SUMS are not yet established."
+    warn "This is expected for pre-release versions of safe-install."
+    echo
+    info "Your installed package hash (for manual comparison):"
     echo "  $INSTALLED_HASH"
+    echo
+    info "To verify manually:"
+    echo "  1. Clone the repo: git clone https://github.com/Khaeldur/safe-install.git"
+    echo "  2. Compare your installed files against the repo source"
+    echo "  3. Or compare this hash with a trusted copy"
     exit 0
 fi
 

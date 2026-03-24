@@ -1,5 +1,5 @@
 # safe-install installer for Windows PowerShell
-# Usage: irm https://raw.githubusercontent.com/safe-install/safe-install/main/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/Khaeldur/safe-install/main/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 
@@ -103,5 +103,5 @@ Write-Host "System tray app"
 Write-Host "    safe-install activate          " -ForegroundColor Cyan -NoNewline
 Write-Host "Wrap pip/npm commands"
 Write-Host ""
-Write-Host "  Docs: https://github.com/safe-install/safe-install" -ForegroundColor Cyan
+Write-Host "  Docs: https://github.com/Khaeldur/safe-install" -ForegroundColor Cyan
 Write-Host ""

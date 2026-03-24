@@ -14,7 +14,7 @@ from .ecosystems import ECOSYSTEMS
 def print_banner():
     print(c("""
  +------------------------------------------------+
- |  safe-install -- supply chain attack defense    |
+ |  safe-install -- install-time package hardening  |
  |  pip | npm | cargo | go | gem | docker          |
  +------------------------------------------------+""", 'cyan'))
 
@@ -30,6 +30,10 @@ def cmd_install(args, config):
     print(f"  Ecosystem: {args.ecosystem}")
 
     eco = eco_class(config)
+
+    if getattr(eco, 'maturity', '') == 'experimental':
+        print(f"  {c('[NOTE]', 'yellow')} {args.ecosystem} support is experimental. Results may be incomplete.")
+
     ok = eco.full_install(
         args.package,
         extra_args=args.extra_args,
@@ -55,6 +59,9 @@ def cmd_audit(args, config):
     print(f"\n  Auditing: {c(args.package, 'bold')} ({args.ecosystem})")
 
     eco = eco_class(config)
+
+    if getattr(eco, 'maturity', '') == 'experimental':
+        print(f"  {c('[NOTE]', 'yellow')} {args.ecosystem} support is experimental. Results may be incomplete.")
 
     # Typosquat check
     print(f"\n{c('  Typosquat check', 'bold')}")
@@ -294,15 +301,15 @@ def detect_ecosystem(package):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='safe-install: Supply chain attack defense for all package managers',
+        description='safe-install: Install-time package hardening for all package managers',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=textwrap.dedent("""
             Supported ecosystems: pip, npm, cargo, go, gem, docker
 
-            Defense layers (12 total, strongest first):
+            Protection layers (12 total):
               1. Docker sandbox       7. Filesystem snapshot
               2. Binary-only          8. Vault hardening
-              3. Hash lockfile        9. DNS defense
+              3. Hash lockfile        9. DNS filtering
               4. Typosquat detect    10. Import guard
               5. Package intel       11. Runtime monitor
               6. Source inspection   12. Network monitor
@@ -313,7 +320,7 @@ def main():
               safe-install audit flask --deep                  # full intelligence
               safe-install scan ./project/ --languages python,javascript
               safe-install monitor python my_script.py         # runtime monitoring
-              safe-install guard --mode block                  # import-time defense
+              safe-install guard --mode block                  # import-time scanning
               safe-install verify                              # self-integrity check
               safe-install check-env                           # show exposed creds
 

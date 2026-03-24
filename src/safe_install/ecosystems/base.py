@@ -16,6 +16,7 @@ class BaseEcosystem(ABC):
     """Each ecosystem adapter implements these methods."""
 
     name = "base"
+    maturity = "experimental"  # "stable", "beta", "experimental"
     docker_image = "python:3.12-slim"
     languages = ["python"]
 
@@ -76,10 +77,13 @@ class BaseEcosystem(ABC):
         use_sandbox = sandbox and sandbox_engine.available
 
         if use_sandbox:
-            print(f"  Mode: {c('DOCKER SANDBOX', 'green')} (full isolation)")
+            print(f"  Mode: {c('DOCKER SANDBOX', 'green')} (Docker isolation)")
         else:
             if sandbox and not sandbox_engine.available:
-                print(f"  {c('[WARN]', 'yellow')} Docker not available, using credential vault")
+                print(f"  {c('[WARN]', 'yellow')} Docker not available. Falling back to credential vault.")
+                print(f"         This provides REDUCED protection. Install Docker for strong isolation.")
+                print(f"         In fallback mode, a sophisticated attacker may still access credentials")
+                print(f"         that are not in the vault's protected list.")
             print(f"  Mode: {c('CREDENTIAL VAULT', 'yellow')} (best-effort)")
 
         # Step 1: Typosquat check

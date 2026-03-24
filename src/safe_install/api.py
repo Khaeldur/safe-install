@@ -14,6 +14,7 @@ import time
 from pathlib import Path
 
 from .config import load_config, get_sensitive_paths, get_sensitive_env_vars
+from .core import DockerSandbox
 
 
 def _get_findings_log_path(config=None):
@@ -410,4 +411,64 @@ def get_status(config=None):
         "exposed_vars": sensitive_vars,
         "config_path": str(Path.home() / ".config" / "safe-install" / "config.toml"),
         "findings_log": log_path,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Structured Result Summary
+# ---------------------------------------------------------------------------
+
+def _count_hooks(audit_result):
+    findings = audit_result.get("findings", [])
+    hook_keywords = {"preinstall", "postinstall", "install script", "build.rs", "setup.py", "extconf.rb"}
+    return sum(1 for f in findings if any(kw in f.get("pattern", "").lower() for kw in hook_keywords))
+
+
+def _list_scans(audit_result):
+    scans = []
+    if audit_result.get("typosquat") is not None:
+        scans.append("typosquat")
+    if audit_result.get("intelligence") is not None:
+        scans.append("intelligence")
+    if audit_result.get("findings") is not None:
+        scans.append("source_inspection")
+    if audit_result.get("binary") is not None:
+        scans.append("binary_check")
+    return scans
+
+
+def _group_severity(audit_result):
+    groups = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+    for f in audit_result.get("findings", []):
+        sev = f.get("severity", "LOW")
+        if sev in groups:
+            groups[sev] += 1
+    return {k: v for k, v in groups.items() if v > 0}
+
+
+def _get_residual_risks(audit_result):
+    risks = []
+    risks.append("import-time code execution not mitigated")
+    has_native = any(
+        ".so" in f.get("context", "") or ".dll" in f.get("context", "")
+        for f in audit_result.get("findings", [])
+    )
+    if has_native:
+        risks.append("native extensions not analyzed (if any .so/.dll present)")
+    if not DockerSandbox().available:
+        risks.append("Docker not available - credential vault fallback used")
+    return risks
+
+
+def format_result_summary(audit_result):
+    return {
+        "package": audit_result.get("package"),
+        "ecosystem": audit_result.get("ecosystem"),
+        "mode": "docker" if DockerSandbox().available else "vault-fallback",
+        "hooks_detected": _count_hooks(audit_result),
+        "scans_run": _list_scans(audit_result),
+        "findings_by_severity": _group_severity(audit_result),
+        "typosquat_risk": audit_result.get("typosquat", {}).get("is_typosquat", False),
+        "intelligence_warnings": len(audit_result.get("intelligence", [])),
+        "residual_risks": _get_residual_risks(audit_result),
     }

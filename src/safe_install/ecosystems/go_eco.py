@@ -15,6 +15,7 @@ from .base import BaseEcosystem, c
 
 class GoEcosystem(BaseEcosystem):
     name = "go"
+    maturity = "experimental"
     docker_image = "golang:1.22-alpine"
     languages = ["go"]
 

@@ -5,7 +5,7 @@ Thanks for your interest in improving supply chain security for everyone. This g
 ## Development Setup
 
 ```bash
-git clone https://github.com/safe-install/safe-install.git
+git clone https://github.com/Khaeldur/safe-install.git
 cd safe-install
 export PYTHONPATH=src
 python -m safe_install --help
@@ -64,9 +64,9 @@ PRs should be focused -- one feature, one bug fix, or one pattern per PR. Large 
 
 ## Reporting Issues
 
-- **Bugs**: Use the [bug report template](https://github.com/safe-install/safe-install/issues/new?template=bug_report.md).
-- **Feature requests**: Use the [feature request template](https://github.com/safe-install/safe-install/issues/new?template=feature_request.md).
-- **False positives**: Use the [false positive template](https://github.com/safe-install/safe-install/issues/new?template=false_positive.md). These are especially valuable for improving detection accuracy.
+- **Bugs**: Use the [bug report template](https://github.com/Khaeldur/safe-install/issues/new?template=bug_report.md).
+- **Feature requests**: Use the [feature request template](https://github.com/Khaeldur/safe-install/issues/new?template=feature_request.md).
+- **False positives**: Use the [false positive template](https://github.com/Khaeldur/safe-install/issues/new?template=false_positive.md). These are especially valuable for improving detection accuracy.
 - **Security vulnerabilities**: See [SECURITY.md](SECURITY.md). Do **not** open a public issue.
 
 ## Code of Conduct

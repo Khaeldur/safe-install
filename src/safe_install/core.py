@@ -1,7 +1,7 @@
 """
-Core defense layers shared across all ecosystems.
+Core protection layers shared across all ecosystems.
 
-Layer 1: DockerSandbox  — OS-level isolation (flawless)
+Layer 1: DockerSandbox  — Docker isolation
 Layer 2: CredentialVault — hide files/env vars (fallback)
 Layer 3: NetworkMonitor  — detect unexpected connections
 Layer 4: SourceInspector — heuristic pattern scan

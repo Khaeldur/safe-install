@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # safe-install universal installer
-# Usage: curl -sSL https://raw.githubusercontent.com/safe-install/safe-install/main/install.sh | bash
+# Usage: curl -sSL https://raw.githubusercontent.com/Khaeldur/safe-install/main/install.sh | bash
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -108,5 +108,5 @@ echo -e "  ${BOLD}Optional:${NC}"
 echo -e "    ${BLUE}pip install safe-install[tray]${NC}  System tray app"
 echo -e "    ${BLUE}safe-install activate${NC}           Wrap pip/npm commands"
 echo ""
-echo -e "  Docs: ${BLUE}https://github.com/safe-install/safe-install${NC}"
+echo -e "  Docs: ${BLUE}https://github.com/Khaeldur/safe-install${NC}"
 echo ""

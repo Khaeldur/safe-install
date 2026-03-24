@@ -11,6 +11,7 @@ from .base import BaseEcosystem, c
 
 class PipEcosystem(BaseEcosystem):
     name = "pip"
+    maturity = "stable"
     languages = ["python"]
 
     @property

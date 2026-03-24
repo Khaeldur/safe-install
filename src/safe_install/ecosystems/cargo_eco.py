@@ -20,6 +20,7 @@ from .base import BaseEcosystem, c
 
 class CargoEcosystem(BaseEcosystem):
     name = "cargo"
+    maturity = "experimental"
     docker_image = "rust:slim"
     languages = ["rust"]
 

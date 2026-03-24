@@ -20,6 +20,10 @@ except ImportError:
     tomllib = None
 
 DEFAULTS = {
+    "mode": {
+        "default": "auto",  # "docker-first", "local-fallback", "analysis-only", "auto"
+        "warn_on_fallback": True,
+    },
     "sandbox": {
         "enabled": True,
         "memory_limit": "2g",

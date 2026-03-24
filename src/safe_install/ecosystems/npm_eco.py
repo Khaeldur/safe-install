@@ -23,6 +23,7 @@ from .base import BaseEcosystem, c
 
 class NpmEcosystem(BaseEcosystem):
     name = "npm"
+    maturity = "beta"
     docker_image = "node:20-slim"
     languages = ["javascript"]
 

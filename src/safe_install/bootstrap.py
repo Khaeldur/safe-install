@@ -1,4 +1,10 @@
-"""Gap 1: Bootstrap verification - verify safe-install itself hasn't been tampered with."""
+"""Bootstrap verification - verify safe-install itself hasn't been tampered with.
+
+NOTE: Release artifacts with SHA256SUMS do not yet exist on GitHub.
+Until releases are established, verify_self() will always return
+(True, "no published hash to verify against"). The local hash
+computation and package integrity checks are functional.
+"""
 
 import hashlib
 import os
@@ -11,7 +17,7 @@ from .core import c
 
 
 class BootstrapVerifier:
-    HASH_URL = "https://github.com/safe-install/safe-install/releases/latest/download/SHA256SUMS"
+    HASH_URL = "https://github.com/Khaeldur/safe-install/releases/latest/download/SHA256SUMS"
 
     def __init__(self, config=None):
         self.config = config or {}
@@ -23,7 +29,7 @@ class BootstrapVerifier:
         published_hash = self._fetch_published_hash()
 
         if published_hash is None:
-            return (True, "no published hash to verify against")
+            return (True, "no published release hash available yet (pre-release)")
 
         if installed_hash == published_hash:
             return (True, f"integrity OK ({installed_hash[:12]}...)")

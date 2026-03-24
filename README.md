@@ -5,185 +5,36 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen.svg)]()
 
-Supply chain attack defense for **pip**, **npm**, **cargo**, **go**, **gem**, and **Docker**.
+Install-time hardening for package managers. Reduces credential exposure during `pip install`, `npm install`, and other package operations by isolating builds in Docker containers and scanning source for exfiltration patterns.
 
-Zero dependencies. Every time you run `pip install` or `npm install`, any package in the dependency tree can execute arbitrary code and steal your SSH keys, cloud credentials, API tokens, browser passwords, crypto wallets, and shell history. This tool stops that.
-
-## Install
-
-```bash
-pip install safe-install
-```
-
-### Or download standalone (zero deps)
-
-```bash
-curl -sSL https://raw.githubusercontent.com/safe-install/safe-install/main/install.sh | bash
-```
+**Status: Alpha (v0.1.x).** pip and npm ecosystems are the most mature. Cargo, Go, Gem, and Docker adapters are experimental. See the [maturity table](#ecosystem-maturity) below.
 
 ## The Problem
 
-```
-pip install litellm          # stole SSH keys, AWS/GCP/Azure creds, env vars
-npm install event-stream     # backdoor targeting Bitcoin wallet Copay
-npm install ua-parser-js     # cryptominer + password stealer (7M weekly downloads)
-cargo install rustdecimal    # typosquat that stole env vars via build.rs
-gem install strong_password  # backdoor via compromised maintainer account
-docker pull ngnix            # typosquat cryptominer image
-```
+Every time you run `pip install` or `npm install`, any package in the dependency tree can execute arbitrary code during the build/install phase. That code runs with your full user permissions and can read SSH keys, cloud credentials, API tokens, browser passwords, and anything else accessible to your account.
 
-A single `pip install some-tool` can pull in hundreds of transitive dependencies, any of which could be compromised. You have no visibility into what runs during install.
+This is not theoretical. Real-world attacks exploiting install-time code execution include compromised maintainer accounts, typosquatting campaigns, and dependency confusion attacks across pip, npm, cargo, and gem ecosystems.
 
-## Defense Layers
+## What safe-install Does
 
-| Layer | Method | Strength | What it stops |
-|-------|--------|----------|---------------|
-| 1 | **Docker Sandbox** | Flawless | Package code runs in isolated container with zero access to host filesystem, credentials, or network |
-| 2 | **Binary-only mode** | Flawless (install-time) | Wheels/prebuilt packages don't execute code during install. Refuses source distributions. |
-| 3 | **Hash lockfile** | Flawless (tampering) | SHA256 verification detects any modification to packages |
-| 4 | **Typosquat detection** | ~95% | Catches name confusion attacks (e.g. `reqeusts` vs `requests`) using edit distance + popularity DB |
-| 5 | **Package intelligence** | ~90% | Cross-references PyPI/npm metadata: age, maintainer history, download counts, known-malicious lists |
-| 6 | **Credential vault** | ~95% | Moves sensitive files to temp vault, clears env vars during install |
-| 7 | **Source inspection** | ~70% | Scans setup.py/postinstall.js/build.rs for exfiltration patterns |
-| 8 | **Filesystem snapshot** | ~85% | Takes before/after snapshot of key directories, alerts on unexpected file changes |
-| 9 | **Vault hardening** | ~90% | Encrypts vault contents, decoy files, tamper detection on vault directory |
-| 10 | **DNS defense** | ~80% | Monitors/blocks DNS exfiltration attempts during install (encoded data in DNS queries) |
-| 11 | **Import guard** | ~75% | Runtime import hook that intercepts suspicious module loads after install |
-| 12 | **Runtime monitor** | ~60% | Detects unexpected outbound connections, file access, and process spawning at runtime |
+safe-install interposes between you and your package manager. Its primary defense is **Docker-based build isolation**: packages are downloaded and built inside a locked-down container with no access to your filesystem, credentials, or environment variables. The resulting artifacts (wheels, tarballs) are copied out and installed locally without executing any code.
 
-**Use Layer 1 (Docker).** Everything else is a fallback.
+When Docker is unavailable, safe-install falls back to a **credential vault** that temporarily hides sensitive files and clears sensitive environment variables during the install.
 
-## Distribution Channels
+Additionally, safe-install runs **heuristic source inspection** that scans package source code for patterns commonly associated with exfiltration (HTTP requests in setup.py, environment variable access in build scripts, etc.).
 
-| Channel | Target | Install |
-|---------|--------|---------|
-| **PyPI** | CLI users | `pip install safe-install` |
-| **System tray app** | Desktop users | `pip install safe-install[tray]` |
-| **VS Code extension** | VS Code users | Install from VS Code Marketplace |
-| **Docker Desktop extension** | Docker users | Install from Docker Hub |
-| **GitHub Action** | CI/CD pipelines | `uses: safe-install/safe-install-action@v1` |
+## What This Does NOT Protect You From
 
-## Quick Start
+- **Import-time attacks**: The sandbox protects install-time only. A malicious `__init__.py` still runs when you `import the_package` in your real environment.
+- **Obfuscated payloads**: Source inspection uses pattern matching. Encrypted payloads, steganography, and multi-stage loaders can evade it.
+- **Compiled native extensions**: Binary code in wheels (`.so`, `.dll`) can contain anything. Source inspection cannot analyze compiled code.
+- **Build tool compromise**: If pip, npm, or cargo themselves are compromised, safe-install cannot help.
+- **Registry infrastructure attacks**: If PyPI or npm registry infrastructure is compromised at the server level.
+- **Complete protection**: This tool reduces exposure and adds friction to attacks. It is not a guarantee.
 
-```bash
-# Check what's exposed on your machine right now
-safe-install check-env
+## Why Docker-First Matters
 
-# Install a package with full protection
-safe-install install requests
-
-# Audit a package without installing
-safe-install audit litellm
-
-# Scan a local project for suspicious patterns (all languages)
-safe-install scan ./my-project/
-```
-
-## Usage
-
-### Protected Install
-
-```bash
-# Auto-detects ecosystem from package name
-safe-install install requests                    # pip
-safe-install install lodash                      # npm (if starts with @)
-safe-install install -e npm express              # explicit ecosystem
-safe-install install -e cargo serde
-safe-install install -e go github.com/gin-gonic/gin
-safe-install install -e docker nginx:latest
-
-# Docker sandbox (default if Docker is available)
-safe-install install flask
-
-# Binary-only (refuse source distributions — no setup.py runs)
-safe-install install flask --binary-only
-
-# Fallback to credential vault (when Docker unavailable)
-safe-install install flask --no-sandbox
-
-# Dry run (audit everything, install nothing)
-safe-install install flask --dry-run
-
-# Force install despite critical findings
-safe-install install flask --force
-```
-
-### Audit
-
-```bash
-# Check a package before you install it
-safe-install audit requests
-safe-install audit -e npm lodash
-safe-install audit -e cargo serde
-
-# Scan local code for exfiltration patterns
-safe-install scan ./my-project/
-safe-install scan ./my-project/ --languages python,javascript
-```
-
-### Environment Check
-
-```bash
-# See exactly what a malicious package could steal from your machine
-safe-install check-env
-```
-
-Output:
-```
-  Sensitive files on disk:
-    EXPOSED ~/.ssh (12KB)
-    EXPOSED ~/.aws (1KB)
-    EXPOSED ~/.gitconfig (0KB)
-    EXPOSED ~/.docker/config.json (0KB)
-    EXPOSED ~/Chrome/Login Data (40KB)
-
-  Sensitive env vars set:
-    EXPOSED GITHUB_TOKEN=ghp_...1234
-    EXPOSED AWS_ACCESS_KEY_ID=AKIA...5678
-
-  Isolation capabilities:
-    Docker: available
-    Bubblewrap: NOT available
-
-  Summary: 5 files, 2 env vars exposed
-  Any malicious package install could read ALL of these.
-```
-
-## Configuration
-
-Create `~/.config/safe-install/config.toml` (global) or `./safe-install.toml` (per-project):
-
-```toml
-[sandbox]
-enabled = true
-memory_limit = "2g"
-cpu_limit = "2"
-timeout = 600
-
-[vault]
-# Add your own sensitive paths beyond the defaults
-extra_paths = [
-    "~/.custom-secrets",
-    "~/.my-app/credentials.json",
-]
-extra_env_vars = [
-    "MY_SECRET_API_KEY",
-    "INTERNAL_DB_PASSWORD",
-]
-
-[network]
-# Additional hosts to allow during install
-allowed_hosts = [
-    "my-private-registry.com",
-    "artifactory.mycompany.com",
-]
-
-[scan]
-skip_tests = true
-max_findings_display = 15
-```
-
-## How the Docker Sandbox Works
+The Docker sandbox is the only defense layer that does not depend on detecting malicious behavior. It works by **removing the attack surface entirely**: the container has nothing to steal, regardless of how sophisticated or obfuscated the malicious code is.
 
 ```
 Your machine                          Docker container
@@ -205,28 +56,169 @@ Your machine                          Docker container
      pip install --no-deps *.whl  (just unzips, no code runs)
 ```
 
-The malicious code runs inside the container where there is literally nothing to steal. The wheels that come out are just zip files — installing them doesn't execute any code.
+Docker isolation is strong but not absolute. Theoretical risks include container escapes (mitigated by `--cap-drop=ALL` and `--security-opt=no-new-privileges`), DNS-based exfiltration from within the container, and resource exhaustion despite limits.
 
-## What Each Ecosystem Defends Against
+## Security Philosophy
 
-| Ecosystem | Attack vector | How safe-install stops it |
-|-----------|--------------|---------------------------|
-| **pip** | `setup.py` runs during install | Sandbox builds wheels; local install is just unzip |
-| **npm** | `preinstall`/`postinstall` scripts | `--ignore-scripts` + sandbox download |
-| **cargo** | `build.rs` runs at compile time | Sandbox compilation; scan for suspicious build scripts |
-| **go** | `init()` functions run on import | Sandbox build; scan for network calls in init |
-| **gem** | `extconf.rb` runs during install | Sandbox build; scan for command execution |
-| **docker** | Malicious Dockerfiles/images | Scan Dockerfiles for pipe-to-shell, privileged mode |
+- **Reduce exposure**: Minimize what malicious code can access during install.
+- **Contain risk**: Isolate builds so that even successful exploitation has limited impact.
+- **Add friction and visibility**: Make attacks harder and more detectable, not impossible.
+- **Defense in depth**: Multiple independent layers, each with known limitations.
+- **Not a guarantee**: No security tool can promise complete protection. safe-install shifts the odds.
+
+## Install
+
+```bash
+pip install safe-install
+```
+
+### Or via the installer script
+
+```bash
+curl -sSL https://raw.githubusercontent.com/Khaeldur/safe-install/main/install.sh | bash
+```
+
+Note: piping curl to bash has its own supply chain risks. Consider cloning the repo and reviewing the script first.
+
+## Ecosystem Maturity
+
+| Ecosystem | Dep Resolution | Source Scan | Docker Sandbox | Local Install | Overall |
+|-----------|:---:|:---:|:---:|:---:|:---:|
+| **pip** | Full tree via `--dry-run --report` | Python patterns (comprehensive) | Builds wheels in container | `pip install --no-deps *.whl` | **Strong** |
+| **npm** | Direct deps via `npm view` | JS patterns (comprehensive) | `npm pack` in container | `npm install --ignore-scripts` | **Strong** |
+| **cargo** | Top-level only (no transitive) | Rust patterns (basic) | `cargo fetch` in container | Manual (prints instructions) | **Experimental** |
+| **go** | Top-level module only | Go patterns (basic) | `go mod download` in container | Manual (prints instructions) | **Experimental** |
+| **gem** | Direct deps only | Ruby patterns (basic) | `gem fetch` in container | `gem install --local` (still runs extconf.rb) | **Experimental** |
+| **docker** | Image layers only | Dockerfile patterns (not wired in) | N/A (is Docker) | `docker load` | **Experimental** |
+
+"Experimental" means: code exists and may provide some protection, but has not been tested against adversarial inputs, has incomplete dependency resolution, and may have non-functional code paths.
+
+## Threat Model
+
+### What safe-install reduces (install-time)
+
+| Threat | Docker Sandbox | Credential Vault | Source Scan |
+|--------|:---:|:---:|:---:|
+| Credential theft in setup.py/postinstall | Isolated | Hidden | Detected (if not obfuscated) |
+| Cryptominer during build | Isolated (resource-limited) | N/A | Detected (heuristic) |
+| RAM/CPU bomb | Limited (--memory, --cpus) | N/A | N/A |
+| Environment variable exfiltration | Isolated (no env vars in container) | Cleared | Detected (heuristic) |
+
+### What safe-install detects heuristically
+
+- Typosquatting via edit-distance comparison against popular package names
+- Suspicious patterns in build scripts (HTTP requests, env access, file reads)
+- Unexpected network connections during install
+- Young packages, recent maintainer changes, low download counts
+
+### What remains possible despite safe-install
+
+- Import-time code execution (`__init__.py`, `conftest.py`)
+- Compiled native extensions with embedded payloads
+- Obfuscated or encrypted malicious code that evades pattern matching
+- Time-delayed payloads that activate long after install
+- Attacks through the package manager itself
+
+## Defense Layers
+
+| Layer | Method | Confidence | Notes |
+|-------|--------|------------|-------|
+| Docker Sandbox | OS-level container isolation | High | Primary defense. No host access. |
+| Binary-only mode | Wheels only, no setup.py | High (pip) | Some packages lack wheels. |
+| Hash lockfile | SHA256 verification | High (when lockfile exists) | Lockfile generation not yet implemented. |
+| Typosquat detection | Edit distance + popularity DB | Moderate | Unvalidated accuracy. |
+| Package intelligence | Registry metadata analysis | Moderate | Queries real APIs. No malicious-package DB. |
+| Source inspection | Regex pattern matching | Low-Moderate | Bypassable via obfuscation. Useful as early warning. |
+| Credential vault | Temporarily hide files/env vars | Moderate | Fallback when Docker unavailable. Known bypasses exist. |
+| Network monitor | Connection polling during install | Low-Moderate | 1s polling interval. Fast exfil can slip through. |
+
+## Quick Start
+
+```bash
+# Check what's exposed on your machine right now
+safe-install check-env
+
+# Install a package with full protection
+safe-install install requests
+
+# Audit a package without installing
+safe-install audit litellm
+
+# Scan a local project for suspicious patterns
+safe-install scan ./my-project/
+```
+
+## Usage
+
+```bash
+# Auto-detects ecosystem from package name
+safe-install install requests                    # pip
+safe-install install -e npm express              # explicit ecosystem
+safe-install install -e cargo serde              # experimental
+safe-install install -e go github.com/gin-gonic/gin  # experimental
+
+# Docker sandbox (default if Docker is available)
+safe-install install flask
+
+# Binary-only (refuse source distributions)
+safe-install install flask --binary-only
+
+# Fallback to credential vault (when Docker unavailable)
+safe-install install flask --no-sandbox
+
+# Dry run (audit everything, install nothing)
+safe-install install flask --dry-run
+
+# Audit
+safe-install audit requests
+safe-install audit -e npm lodash
+safe-install audit flask --deep  # includes intelligence + binary analysis
+```
+
+## Configuration
+
+Create `~/.config/safe-install/config.toml` (global) or `./safe-install.toml` (per-project):
+
+```toml
+[sandbox]
+enabled = true
+memory_limit = "2g"
+cpu_limit = "2"
+timeout = 600
+
+[vault]
+extra_paths = [
+    "~/.custom-secrets",
+]
+extra_env_vars = [
+    "MY_SECRET_API_KEY",
+]
+
+[network]
+allowed_hosts = [
+    "my-private-registry.com",
+]
+```
 
 ## Limitations
 
-1. **Import-time attacks**: The sandbox protects install-time. A malicious `__init__.py` still runs when you `import the_package` in your real environment. Defense: virtual environments + runtime monitoring.
+1. **Import-time attacks**: The sandbox protects install-time. A malicious `__init__.py` still runs when you `import the_package`. Mitigation: use virtual environments, consider the `safe-install guard` command (experimental).
 
-2. **Obfuscated code**: The source inspector uses pattern matching. Sophisticated obfuscation (encrypted payloads, steganography, multi-stage loaders) can evade it. Defense: the Docker sandbox doesn't care about obfuscation — there's nothing to steal.
+2. **Obfuscated code**: Source inspection uses pattern matching. Sophisticated obfuscation evades it. The Docker sandbox does not care about obfuscation, but it only protects install-time.
 
-3. **Without Docker**: Falls back to credential vault, which is good but not perfect. An attacker who knows about safe-install could look for the vault temp directory, or access paths not in the sensitive list. Defense: install Docker.
+3. **Without Docker**: The credential vault fallback is imperfect. An attacker who knows about safe-install could look for the vault temp directory, or access paths not in the sensitive list.
 
-4. **Compiled extensions**: Native C/C++ extensions in wheels can contain anything. The source inspector can't analyze compiled code. Defense: audit compiled packages separately, prefer pure-Python alternatives.
+4. **Compiled extensions**: Native C/C++ extensions in wheels can contain anything. Source inspection cannot analyze compiled code.
+
+5. **Experimental ecosystems**: cargo, go, gem, and docker adapters have incomplete dependency resolution and may have non-functional code paths. Do not rely on them for security-critical workflows.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Security Policy
+
+See [SECURITY.md](SECURITY.md).
 
 ## License
 

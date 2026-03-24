@@ -20,6 +20,7 @@ from .base import BaseEcosystem, c
 
 class DockerEcosystem(BaseEcosystem):
     name = "docker"
+    maturity = "experimental"
     docker_image = "docker:cli"
     languages = []  # Dockerfiles are their own thing
 

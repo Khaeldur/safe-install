@@ -16,6 +16,7 @@ from .base import BaseEcosystem, c
 
 class GemEcosystem(BaseEcosystem):
     name = "gem"
+    maturity = "experimental"
     docker_image = "ruby:3.2-slim"
     languages = ["ruby"]
 

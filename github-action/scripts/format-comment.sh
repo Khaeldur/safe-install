@@ -96,7 +96,7 @@ if finding_rows:
 lines.extend([
     '',
     '---',
-    '*Scanned by [safe-install](https://github.com/safe-install/safe-install)*',
+    '*Scanned by [safe-install](https://github.com/Khaeldur/safe-install)*',
 ])
 
 print('\n'.join(lines))
