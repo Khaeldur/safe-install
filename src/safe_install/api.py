@@ -94,9 +94,14 @@ def audit_package(package, ecosystem="pip", config=None):
             eco = eco_class(config)
             inspector = SourceInspector(languages=eco.languages, config=config)
             with tempfile.TemporaryDirectory(prefix="safe_api_") as tmpdir:
+                pkg_base = re.split(r'[><=!~\[]', package)[0].lower()
+                seen = {pkg_base}
                 packages_to_scan = [package]
                 if result["deps"]:
-                    packages_to_scan.extend(d["name"] for d in result["deps"][:10])
+                    for d in result["deps"][:10]:
+                        if d["name"].lower() not in seen:
+                            seen.add(d["name"].lower())
+                            packages_to_scan.append(d["name"])
                 for pkg in packages_to_scan:
                     pkg_dir = os.path.join(tmpdir, pkg.replace("/", "_").replace("@", "_"))
                     os.makedirs(pkg_dir, exist_ok=True)

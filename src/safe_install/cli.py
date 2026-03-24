@@ -101,10 +101,16 @@ def cmd_audit(args, config):
     print(f"\n{c('  Source inspection', 'bold')}")
     inspector = SourceInspector(languages=eco.languages, config=config)
 
+    import re as _re
     with tempfile.TemporaryDirectory(prefix='safe_audit_') as tmpdir:
+        pkg_base = _re.split(r'[><=!~\[]', args.package)[0].lower()
+        seen = {pkg_base}
         packages = [args.package]
         if deps:
-            packages.extend(d['name'] for d in deps[:10])
+            for d in deps[:10]:
+                if d['name'].lower() not in seen:
+                    seen.add(d['name'].lower())
+                    packages.append(d['name'])
         for pkg in packages:
             pkg_dir = os.path.join(tmpdir, pkg.replace('/', '_').replace('@', '_'))
             os.makedirs(pkg_dir, exist_ok=True)

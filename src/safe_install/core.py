@@ -385,6 +385,15 @@ class SourceInspector:
                 return True
             if stripped.startswith(('"""', "'''")):
                 return True
+            # RST docstring references like :class:`http.client.HTTPResponse`
+            if ':class:`' in stripped or ':meth:`' in stripped or ':func:`' in stripped:
+                return True
+            # Doctest lines
+            if stripped.startswith('>>>'):
+                return True
+            # RST-style parameter docs
+            if stripped.startswith(':param ') or stripped.startswith(':type '):
+                return True
         elif lang in ('javascript', 'rust', 'go'):
             if stripped.startswith('//'):
                 return True
@@ -464,7 +473,7 @@ class SourceInspector:
     def scan_directory(self, directory):
         if self._use_whitelist and self._whitelist:
             pkg_name = os.path.basename(directory.rstrip(os.sep)).lower()
-            pkg_name = re.sub(r'[-_]\d+.*$', '', pkg_name).replace('_', '-')
+            pkg_name = re.sub(r'[-_]\d+[\d.]*.*$', '', pkg_name).replace('_', '-').rstrip('-')
             if pkg_name in self._whitelist:
                 print(f"  {c(f'Skipping {pkg_name} (whitelisted)', 'dim')}")
                 return

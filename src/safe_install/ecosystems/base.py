@@ -1,6 +1,7 @@
 """Base class for ecosystem adapters."""
 
 import os
+import re
 import subprocess
 import sys
 import tarfile
@@ -130,9 +131,14 @@ class BaseEcosystem(ABC):
         print(f"\n{c('  [4/8] Source inspection', 'bold')}")
         inspector = SourceInspector(languages=self.languages, config=self.config)
         with tempfile.TemporaryDirectory(prefix='safe_scan_') as tmpdir:
+            pkg_base = re.split(r'[><=!~\[]', package)[0].lower()
+            seen_pkgs = {pkg_base}
             packages_to_scan = [package]
             if deps:
-                packages_to_scan.extend(d['name'] for d in deps[:10])
+                for d in deps[:10]:
+                    if d['name'].lower() not in seen_pkgs:
+                        seen_pkgs.add(d['name'].lower())
+                        packages_to_scan.append(d['name'])
             for pkg in packages_to_scan:
                 pkg_dir = os.path.join(tmpdir, pkg.replace('/', '_').replace('@', '_'))
                 os.makedirs(pkg_dir, exist_ok=True)
