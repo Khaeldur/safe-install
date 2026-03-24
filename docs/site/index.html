@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>safe-install &mdash; Supply chain attack defense for every package manager</title>
-  <meta name="description" content="12 defense layers. 6 ecosystems. Zero dependencies. Protect pip, npm, cargo, go, gem, and Docker installs from supply chain attacks.">
+  <title>safe-install &mdash; Install-time package hardening for every package manager</title>
+  <meta name="description" content="12 protection layers. 6 ecosystems. Zero dependencies. Harden pip, npm, cargo, go, gem, and Docker installs against supply chain attacks.">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1f6e1;</text></svg>">
 </head>
@@ -19,7 +19,7 @@
     <ul class="nav-links">
       <li><a href="#problem">Problem</a></li>
       <li><a href="#how-it-works">How It Works</a></li>
-      <li><a href="#defense">Defense Layers</a></li>
+      <li><a href="#defense">Protection Layers</a></li>
       <li><a href="#channels">Distribution</a></li>
       <li><a href="#install">Install</a></li>
       <li><a href="#demo">Demo</a></li>
@@ -34,9 +34,9 @@
 <section class="hero" id="top">
   <div class="hero-badge">&#x1f6e1; Open Source Security Tool</div>
   <h1>safe-install</h1>
-  <p class="hero-subtitle">Supply chain attack defense for every package manager</p>
+  <p class="hero-subtitle">Install-time package hardening for every package manager</p>
   <p class="hero-tagline">
-    <span>12</span> defense layers. <span>6</span> ecosystems. Zero dependencies. One tool.
+    <span>12</span> protection layers. <span>6</span> ecosystems. Zero dependencies. One tool.
   </p>
   <div class="hero-buttons">
     <a href="#install" class="btn btn-primary">Get Started</a>
@@ -114,7 +114,7 @@
     <div class="fade-in">
       <span class="section-label">How It Works</span>
       <h2 class="section-title">Three steps to safe installs</h2>
-      <p class="section-desc">safe-install wraps your package manager with defense-in-depth protection. No config files, no setup, no dependencies.</p>
+      <p class="section-desc">safe-install wraps your package manager with layered install-time hardening. No config files, no setup, no dependencies.</p>
     </div>
 
     <div class="steps-grid">
@@ -141,100 +141,100 @@
 <section class="defense" id="defense">
   <div class="section-inner">
     <div class="fade-in">
-      <span class="section-label">Defense in Depth</span>
-      <h2 class="section-title">12 independent defense layers</h2>
+      <span class="section-label">Protection Layers</span>
+      <h2 class="section-title">12 protection layers</h2>
       <p class="section-desc">Each layer works independently. If one fails, others still protect you. Use Layer 1 (Docker). Everything else is a fallback.</p>
     </div>
 
     <!-- Install-time -->
     <div class="defense-group fade-in">
-      <div class="defense-group-title">Install-time Defenses</div>
+      <div class="defense-group-title">Install-time Protection</div>
       <div class="defense-grid">
         <div class="defense-card">
           <span class="defense-icon">&#x1f4e6;</span>
           <h4>Docker Sandbox</h4>
           <p>Complete OS-level isolation. Package code runs in a locked-down container with zero access to host filesystem, credentials, or network.</p>
-          <span class="defense-strength strength-flawless">Flawless</span>
+          <span class="defense-strength strength-flawless">Strong</span>
         </div>
         <div class="defense-card">
           <span class="defense-icon">&#x2699;</span>
           <h4>Binary-Only Mode</h4>
           <p>Refuses source distributions entirely. Wheels and prebuilt packages skip code execution during install.</p>
-          <span class="defense-strength strength-flawless">Flawless (install)</span>
+          <span class="defense-strength strength-flawless">Strong (install)</span>
         </div>
         <div class="defense-card">
           <span class="defense-icon">&#x1f512;</span>
           <h4>Hash Lockfile</h4>
           <p>SHA256 verification of every package. Detects any tampering, supply chain swaps, or dependency confusion attacks.</p>
-          <span class="defense-strength strength-flawless">Flawless (tamper)</span>
+          <span class="defense-strength strength-flawless">Strong (tamper)</span>
         </div>
         <div class="defense-card">
           <span class="defense-icon">&#x1f5c4;</span>
           <h4>Credential Vault</h4>
           <p>Moves SSH keys, cloud creds, API tokens, and browser data to a temporary vault. Clears env vars during install.</p>
-          <span class="defense-strength strength-strong">~95%</span>
+          <span class="defense-strength strength-strong">Moderate</span>
         </div>
       </div>
     </div>
 
     <!-- Analysis -->
     <div class="defense-group fade-in">
-      <div class="defense-group-title">Analysis Defenses</div>
+      <div class="defense-group-title">Analysis Layers</div>
       <div class="defense-grid">
         <div class="defense-card">
           <span class="defense-icon">&#x1f50d;</span>
           <h4>Typosquat Detection</h4>
           <p>Levenshtein distance, keyboard proximity, and phonetic matching against top packages. Catches "reqeusts", "lodsah", "colourama".</p>
-          <span class="defense-strength strength-strong">~90%</span>
+          <span class="defense-strength strength-strong">Moderate</span>
         </div>
         <div class="defense-card">
           <span class="defense-icon">&#x1f4e1;</span>
           <h4>Threat Intelligence</h4>
           <p>Cross-references packages against known-malicious registries, OSV advisories, and community blocklists.</p>
-          <span class="defense-strength strength-strong">~85%</span>
+          <span class="defense-strength strength-strong">Heuristic</span>
         </div>
         <div class="defense-card">
           <span class="defense-icon">&#x1f4c4;</span>
           <h4>Source Code Scan</h4>
           <p>Inspects setup.py, postinstall.js, build.rs for exfiltration patterns: file reads, network calls, env access, obfuscation.</p>
-          <span class="defense-strength strength-good">~70%</span>
+          <span class="defense-strength strength-good">Heuristic</span>
         </div>
         <div class="defense-card">
           <span class="defense-icon">&#x1f9ec;</span>
           <h4>Binary Analysis</h4>
           <p>Detects suspicious compiled artifacts, embedded scripts, and obfuscated payloads in distributed packages.</p>
-          <span class="defense-strength strength-good">~65%</span>
+          <span class="defense-strength strength-good">Experimental</span>
         </div>
       </div>
     </div>
 
     <!-- Runtime -->
     <div class="defense-group fade-in">
-      <div class="defense-group-title">Runtime Defenses</div>
+      <div class="defense-group-title">Runtime Layers</div>
       <div class="defense-grid">
         <div class="defense-card">
           <span class="defense-icon">&#x1f4f8;</span>
           <h4>Filesystem Snapshot</h4>
           <p>Takes before/after snapshots to detect unexpected file modifications, new files, or changes to sensitive paths.</p>
-          <span class="defense-strength strength-strong">~90%</span>
+          <span class="defense-strength strength-strong">Heuristic</span>
         </div>
         <div class="defense-card">
           <span class="defense-icon">&#x1f6e1;</span>
           <h4>Vault Hardening</h4>
           <p>Monitors vault integrity during install. Detects any attempts to access, copy, or exfiltrate protected credentials.</p>
-          <span class="defense-strength strength-strong">~95%</span>
+          <span class="defense-strength strength-strong">Moderate</span>
         </div>
         <div class="defense-card">
           <span class="defense-icon">&#x1f310;</span>
           <h4>DNS Defense</h4>
           <p>Monitors DNS queries during install. Flags unexpected domains, data exfiltration via DNS tunneling, and C2 beacons.</p>
-          <span class="defense-strength strength-good">~70%</span>
+          <span class="defense-strength strength-good">Heuristic</span>
         </div>
         <div class="defense-card">
           <span class="defense-icon">&#x1f4e1;</span>
           <h4>Network Monitor</h4>
           <p>Detects unexpected outbound connections, data exfiltration attempts, and communication with known malicious IPs.</p>
-          <span class="defense-strength strength-good">~60%</span>
+          <span class="defense-strength strength-good">Heuristic</span>
         </div>
       </div>
     </div>
