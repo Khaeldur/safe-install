@@ -244,6 +244,33 @@ def run_all_tests():
             si_dns = SourceInspector(languages=['python'])
             si_dns.scan_directory(dns_dir)
             t.test("DNS exfil sim: findings detected", lambda: len(si_dns.findings) > 0)
+
+        # litellm .pth attack simulation (March 2026 attack)
+        pth_dir = os.path.join(test_payloads_dir, "litellm_pth_sim")
+        if os.path.isdir(pth_dir):
+            si_pth = SourceInspector(languages=['python'])
+            si_pth.scan_directory(pth_dir)
+            t.test("litellm .pth: findings detected", lambda: len(si_pth.findings) > 0)
+            t.test("litellm .pth: CRITICAL found", lambda:
+                any(f['severity'] == 'CRITICAL' for f in si_pth.findings))
+            t.test("litellm .pth: .pth file flagged", lambda:
+                any('.pth' in f.get('pattern', '') for f in si_pth.findings))
+            t.test("litellm .pth: persistence detected", lambda:
+                any('persistence' in f.get('pattern', '').lower() or
+                    'systemd' in f.get('pattern', '').lower()
+                    for f in si_pth.findings))
+            t.test("litellm .pth: K8s detected", lambda:
+                any('kubernetes' in f.get('pattern', '').lower() or
+                    'lateral' in f.get('pattern', '').lower()
+                    for f in si_pth.findings))
+            t.test("litellm .pth: encrypted exfil detected", lambda:
+                any('encrypt' in f.get('pattern', '').lower() or
+                    'cipher' in f.get('pattern', '').lower()
+                    for f in si_pth.findings))
+            t.test("litellm .pth: double base64 detected", lambda:
+                any('nested' in f.get('pattern', '').lower() or
+                    'double' in f.get('pattern', '').lower()
+                    for f in si_pth.findings))
     else:
         t.test("attack payloads directory exists", lambda: False)
 
@@ -479,7 +506,7 @@ def run_all_tests():
         'docker-extension/metadata.json',
         'docs/ARCHITECTURE.md',
         'docs/THREAT_MODEL.md',
-        'docs/site/index.html',
+        'docs/index.html',
         'web/server.py',
         'web/index.html',
         'tests/test_detection.py',

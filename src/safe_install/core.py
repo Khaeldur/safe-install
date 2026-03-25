@@ -293,6 +293,29 @@ EXFIL_PATTERNS_PYTHON = [
     (r'ctypes\.(CDLL|windll|cdll)', 'Native library loading'),
     (r'keyring\.(get_password|set_password)', 'Keyring access'),
     (r'getpass\.(getuser|getpass)', 'Credential collection'),
+    # litellm-inspired: nested encoding detection
+    (r'base64\.b64decode\(.*base64\.b64decode', 'Double base64 encoding (nested obfuscation)'),
+    (r'b64decode\(.*decode\(.*b64decode', 'Chained base64 decoding (nested obfuscation)'),
+    (r'codecs\.decode\(.*base64', 'Codecs + base64 (layered obfuscation)'),
+    # litellm-inspired: .pth file creation/manipulation
+    (r'\.pth["\']', '.pth file reference (auto-execute on Python startup)'),
+    (r'site-packages.*\.pth', '.pth file in site-packages (persistence)'),
+    (r'sysconfig\.get_path.*purelib', 'Site-packages path lookup (possible .pth injection)'),
+    # litellm-inspired: encrypted exfiltration
+    (r'(AES|Cipher|PKCS|RSA).*new\(', 'Crypto cipher creation (possible encrypted exfil)'),
+    (r'Crypto\.(Cipher|PublicKey|Random)', 'PyCryptodome usage (possible encrypted exfil)'),
+    (r'cryptography\.(fernet|hazmat)', 'Cryptography lib (possible encrypted exfil)'),
+    # litellm-inspired: systemd/cron persistence
+    (r'systemd.*service|\.service["\']|sysmon\.service', 'Systemd service reference (persistence)'),
+    (r'crontab|cron\.d', 'Crontab manipulation (persistence)'),
+    (r'/etc/systemd|systemctl|WantedBy=', 'Systemd manipulation (persistence)'),
+    # litellm-inspired: K8s lateral movement
+    (r'kubectl|kubernetes\.client|from kubernetes import', 'Kubernetes API access (lateral movement)'),
+    (r'KubeConfig|load_kube_config|load_incluster', 'Kubernetes config loading (lateral movement)'),
+    (r'create_namespaced_pod|privileged.*[Tt]rue', 'K8s privileged pod creation (lateral movement)'),
+    # litellm-inspired: tarball creation for exfil
+    (r'tarfile\.open.*["\']w', 'Tar archive creation (possible data staging for exfil)'),
+    (r'shutil\.make_archive', 'Archive creation (possible data staging for exfil)'),
 ]
 
 EXFIL_PATTERNS_JS = [
@@ -339,7 +362,7 @@ EXFIL_PATTERNS_RUBY = [
 ]
 
 PATTERNS_BY_LANG = {
-    'python': (EXFIL_PATTERNS_PYTHON, {'.py'}),
+    'python': (EXFIL_PATTERNS_PYTHON, {'.py', '.pth'}),
     'javascript': (EXFIL_PATTERNS_JS, {'.js', '.mjs', '.cjs', '.ts'}),
     'rust': (EXFIL_PATTERNS_RUST, {'.rs'}),
     'go': (EXFIL_PATTERNS_GO, {'.go'}),
@@ -347,7 +370,8 @@ PATTERNS_BY_LANG = {
 }
 
 HIGH_RISK_FILES = {
-    'python': ['setup.py', 'setup.cfg', 'conftest.py', '__init__.py', '__main__.py'],
+    'python': ['setup.py', 'setup.cfg', 'conftest.py', '__init__.py', '__main__.py',
+               '*.pth'],  # .pth files execute on every Python startup
     'javascript': ['package.json', 'preinstall.js', 'postinstall.js', 'install.js',
                    'preinstall.sh', 'postinstall.sh', 'index.js'],
     'rust': ['build.rs', 'lib.rs', 'main.rs'],
@@ -470,6 +494,44 @@ class SourceInspector:
                         'context': ctx, 'language': lang,
                     })
 
+    def _scan_pth_files(self, directory):
+        """Scan for .pth files — these execute on every Python startup (litellm attack vector)."""
+        for root, dirs, files in os.walk(directory):
+            for fname in files:
+                if fname.endswith('.pth'):
+                    filepath = os.path.join(root, fname)
+                    relpath = os.path.relpath(filepath, directory)
+                    try:
+                        with open(filepath, 'r', errors='ignore') as f:
+                            content = f.read().strip()
+                    except Exception:
+                        continue
+                    # Any .pth file with executable code (not just path entries) is CRITICAL
+                    has_import = 'import ' in content
+                    has_exec = any(kw in content for kw in ['exec(', 'eval(', '__import__',
+                                                            'subprocess', 'os.system', 'urllib',
+                                                            'requests.', 'socket.', 'base64'])
+                    if has_import or has_exec:
+                        self.findings.append({
+                            'severity': 'CRITICAL',
+                            'file': relpath,
+                            'line': 1,
+                            'pattern': '.pth file with executable code (runs on every Python startup)',
+                            'context': content[:120] + ('...' if len(content) > 120 else ''),
+                            'language': 'python',
+                        })
+                    elif content and not all(line.startswith('#') or line.startswith('/')
+                                            or line.startswith('.') or not line.strip()
+                                            for line in content.splitlines()):
+                        self.findings.append({
+                            'severity': 'HIGH',
+                            'file': relpath,
+                            'line': 1,
+                            'pattern': '.pth file with non-path content (suspicious)',
+                            'context': content[:120] + ('...' if len(content) > 120 else ''),
+                            'language': 'python',
+                        })
+
     def scan_directory(self, directory):
         if self._use_whitelist and self._whitelist:
             pkg_name = os.path.basename(directory.rstrip(os.sep)).lower()
@@ -477,6 +539,9 @@ class SourceInspector:
             if pkg_name in self._whitelist:
                 print(f"  {c(f'Skipping {pkg_name} (whitelisted)', 'dim')}")
                 return
+
+        # Scan .pth files first (litellm attack vector)
+        self._scan_pth_files(directory)
 
         skip_dirs = {'tests', 'test', 'testing', 'examples', 'docs',
                      'node_modules', '.git', '__pycache__', 'vendor'}
