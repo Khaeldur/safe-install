@@ -43,14 +43,27 @@ def c(text, color):
 class DockerSandbox:
     def __init__(self, config=None):
         self.config = config or {}
+        self._docker_cmd = ['docker']
         self.available = self._check()
 
     def _check(self):
+        # Try native docker first
         try:
             r = subprocess.run(['docker', 'info'], capture_output=True, timeout=10)
-            return r.returncode == 0
+            if r.returncode == 0:
+                self._docker_cmd = ['docker']
+                return True
         except (FileNotFoundError, subprocess.TimeoutExpired):
-            return False
+            pass
+        # Fallback: try docker via WSL
+        try:
+            r = subprocess.run(['wsl', '-e', 'docker', 'info'], capture_output=True, timeout=15)
+            if r.returncode == 0:
+                self._docker_cmd = ['wsl', '-e', 'docker']
+                return True
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+        return False
 
     def run_in_sandbox(self, image, script, timeout=600):
         """Run a script in an isolated container. Returns (ok, stdout, stderr)."""
@@ -58,8 +71,8 @@ class DockerSandbox:
         mem = sandbox_cfg.get("memory_limit", "2g")
         cpus = str(sandbox_cfg.get("cpu_limit", "2"))
 
-        cmd = [
-            'docker', 'run', '--rm',
+        cmd = self._docker_cmd + [
+            'run', '--rm',
             '--name', f'safe-install-{os.getpid()}',
             f'--memory={mem}', f'--memory-swap={mem}',
             f'--cpus={cpus}',
@@ -77,7 +90,7 @@ class DockerSandbox:
             r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
             return r.returncode == 0, r.stdout, r.stderr
         except subprocess.TimeoutExpired:
-            subprocess.run(['docker', 'rm', '-f', f'safe-install-{os.getpid()}'],
+            subprocess.run(self._docker_cmd + ['rm', '-f', f'safe-install-{os.getpid()}'],
                          capture_output=True, timeout=10)
             return False, '', 'Timed out'
         except Exception as e:
@@ -93,8 +106,8 @@ class DockerSandbox:
 
         host_dir = tempfile.mkdtemp(prefix='safe_install_out_')
 
-        cmd = [
-            'docker', 'run',
+        cmd = self._docker_cmd + [
+            'run',
             '--name', container_name,
             f'--memory={mem}', f'--memory-swap={mem}',
             f'--cpus={cpus}',
@@ -109,20 +122,20 @@ class DockerSandbox:
             r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
             if r.returncode != 0:
                 print(f"  {c('[ERROR]', 'red')} Container failed: {r.stderr[:300]}")
-                subprocess.run(['docker', 'rm', '-f', container_name],
+                subprocess.run(self._docker_cmd + ['rm', '-f', container_name],
                              capture_output=True, timeout=10)
                 return None
 
             subprocess.run(
-                ['docker', 'cp', f'{container_name}:{container_output_dir}/.', host_dir],
+                self._docker_cmd + ['cp', f'{container_name}:{container_output_dir}/.', host_dir],
                 capture_output=True, timeout=60
             )
-            subprocess.run(['docker', 'rm', '-f', container_name],
+            subprocess.run(self._docker_cmd + ['rm', '-f', container_name],
                          capture_output=True, timeout=10)
             return host_dir
         except Exception as e:
             print(f"  {c('[ERROR]', 'red')} Sandbox error: {e}")
-            subprocess.run(['docker', 'rm', '-f', container_name],
+            subprocess.run(self._docker_cmd + ['rm', '-f', container_name],
                          capture_output=True, timeout=10)
             return None
 
