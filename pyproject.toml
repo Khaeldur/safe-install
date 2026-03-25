@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "safe-install"
-version = "0.1.1"
+version = "0.1.2"
 description = "Supply chain attack defense for pip, npm, cargo, go, gem, and Docker"
 readme = "README.md"
 license = "MIT"

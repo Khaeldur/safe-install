@@ -15,6 +15,28 @@ Every time you run `pip install` or `npm install`, any package in the dependency
 
 This is not theoretical. Real-world attacks exploiting install-time code execution include compromised maintainer accounts, typosquatting campaigns, and dependency confusion attacks across pip, npm, cargo, and gem ecosystems.
 
+### Case Study: LiteLLM Supply Chain Attack (March 2026)
+
+On March 24, 2026, attackers published malicious versions of [litellm](https://pypi.org/project/litellm/) (v1.82.7 and v1.82.8) after compromising PyPI publishing credentials through a poisoned Trivy security scanner in LiteLLM's CI/CD pipeline. The malicious versions were live for approximately three hours — on a package with ~3.4 million daily downloads.
+
+The payload operated in three stages:
+1. **Credential harvesting** — collected SSH keys, cloud tokens, and Kubernetes configs
+2. **Encrypted exfiltration** — sent stolen data to attacker infrastructure using AES-256 + RSA
+3. **Persistence** — deployed systemd services and Kubernetes pods for lateral movement
+
+Because the attacker used legitimate PyPI credentials, hash verification and signature checks would not have caught this. However, safe-install's defenses directly address multiple layers of this attack:
+
+| Defense Layer | Would it help? | Why |
+|---|:---:|---|
+| **Docker Sandbox** | **Yes** | Credentials, SSH keys, and cloud tokens are invisible inside the container — nothing to steal |
+| **Source Inspection** | **Yes** | The payload contained detectable patterns: HTTP exfiltration, env var access, file reads targeting `~/.ssh/` and `~/.aws/` |
+| **Credential Vault** | **Yes** | Sensitive files and env vars would have been temporarily hidden during install |
+| **`.pth` file detection** | **Yes** | v0.1.1 specifically detects `.pth` file injection, the persistence technique used in v1.82.8 |
+
+The one gap: the `.pth` persistence technique is an **import-time attack** — it executes on every Python startup, not just during install. The Docker sandbox protects install-time only. See [Limitations](#limitations) for more on this boundary.
+
+This incident directly motivated the detection patterns added in safe-install v0.1.1.
+
 ## What safe-install Does
 
 safe-install interposes between you and your package manager. Its primary defense is **Docker-based build isolation**: packages are downloaded and built inside a locked-down container with no access to your filesystem, credentials, or environment variables. The resulting artifacts (wheels, tarballs) are copied out and installed locally without executing any code.
